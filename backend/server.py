@@ -14,9 +14,23 @@ db = JSONDatabase()
 def get_nurses():
     return jsonify(db.get_nurses())
 
-@app.route("/health")
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({
+        "service": "SafeStaff AI Backend",
+        "status": "ok",
+        "health": "/health",
+        "predict_wait": "/api/predict_wait"
+    })
+
+@app.route("/health", methods=["GET"])
+@app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok"})
+    return jsonify({
+        "status": "ok",
+        "service": "SafeStaff AI Backend",
+        "research_modules": "loaded"
+    })
 
 @app.route("/api/nurses", methods=["POST"])
 def add_nurse():
@@ -114,6 +128,15 @@ def predict_wait():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 400
+
+@app.route("/predict", methods=["POST"])
+def predict_alias():
+    """Compatibility endpoint for quick Railway/browser/API tests.
+
+    The Streamlit frontend uses /api/predict_wait, but /predict is useful
+    for simple external tests and avoids 404 confusion.
+    """
+    return predict_wait()
 
 @app.route("/api/resolve_shortage", methods=["POST"])
 def resolve_shortage():
@@ -281,13 +304,6 @@ def reject_resolution():
         return jsonify({"success": False, "error": "Log not found."}), 404
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route("/health", methods=["GET"])
-def health_check():
-    return jsonify({
-        "status": "ok",
-        "research_modules": "loaded"
-    })
 
 @app.route("/research-modules/status", methods=["GET"])
 def modules_status():
@@ -707,5 +723,3 @@ if __name__ == "__main__":
     xgb_model = payload["model"]
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
-
-
