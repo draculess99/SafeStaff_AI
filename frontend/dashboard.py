@@ -22,7 +22,7 @@ st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone",
 # https://wonderful-laughter-production-92d9.up.railway.app
 API_BASE_URL = os.getenv(
     "BACKEND_URL",
-    os.getenv("API_BASE_URL", "https://wonderful-laughter-production-92d9.up.railway.app")
+    os.getenv("API_BASE_URL", "https://safestaffai-production-5493.up.railway.app")
 ).rstrip("/")
 
 # Safety guard: if someone accidentally enters the health endpoint as the base URL,
