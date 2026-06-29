@@ -1,0 +1,280 @@
+{
+  "nurses": [
+    {
+      "id": "NURSE_001",
+      "name": "Sarah Jenkins",
+      "certifications": [
+        "Emergency",
+        "ICU"
+      ],
+      "weekly_hours": 36,
+      "base_rate": 55.0,
+      "circadian_preference": "Night",
+      "distance_miles": 5,
+      "phone": "+1-555-0192"
+    },
+    {
+      "id": "NURSE_002",
+      "name": "David Miller",
+      "certifications": [
+        "Emergency"
+      ],
+      "weekly_hours": 44,
+      "base_rate": 48.0,
+      "circadian_preference": "Morning",
+      "distance_miles": 12,
+      "phone": "+1-555-0183"
+    },
+    {
+      "id": "NURSE_003",
+      "name": "Elena Rostova",
+      "certifications": [
+        "ICU",
+        "Pediatrics"
+      ],
+      "weekly_hours": 24,
+      "base_rate": 58.0,
+      "circadian_preference": "Flexible",
+      "distance_miles": 8,
+      "phone": "+1-555-0174"
+    },
+    {
+      "id": "NURSE_004",
+      "name": "Marcus Vance",
+      "certifications": [
+        "Emergency",
+        "Pediatrics"
+      ],
+      "weekly_hours": 48,
+      "base_rate": 52.0,
+      "circadian_preference": "Morning",
+      "distance_miles": 22,
+      "phone": "+1-555-0165"
+    },
+    {
+      "id": "NURSE_005",
+      "name": "Jessica Taylor",
+      "certifications": [
+        "Emergency"
+      ],
+      "weekly_hours": 8,
+      "base_rate": 47.0,
+      "circadian_preference": "Flexible",
+      "distance_miles": 3,
+      "phone": "+1-555-0156"
+    },
+    {
+      "id": "NURSE_006",
+      "name": "Chloe Vance",
+      "certifications": [
+        "Emergency",
+        "ICU"
+      ],
+      "weekly_hours": 52,
+      "base_rate": 56.0,
+      "circadian_preference": "Night",
+      "distance_miles": 15,
+      "phone": "+1-555-0147"
+    },
+    {
+      "id": "NURSE_007",
+      "name": "Arjun Patel",
+      "certifications": [
+        "Pediatrics"
+      ],
+      "weekly_hours": 40,
+      "base_rate": 50.0,
+      "circadian_preference": "Morning",
+      "distance_miles": 9,
+      "phone": "+1-555-0138"
+    },
+    {
+      "id": "NURSE_008",
+      "name": "Emily Watson",
+      "certifications": [
+        "Emergency"
+      ],
+      "weekly_hours": 32,
+      "base_rate": 49.0,
+      "circadian_preference": "Flexible",
+      "distance_miles": 6,
+      "phone": "+1-555-0129"
+    },
+    {
+      "id": "NURSE_009",
+      "name": "Daniel Kim",
+      "certifications": [
+        "ICU"
+      ],
+      "weekly_hours": 40,
+      "base_rate": 54.0,
+      "circadian_preference": "Night",
+      "distance_miles": 14,
+      "phone": "+1-555-0110"
+    },
+    {
+      "id": "NURSE_010",
+      "name": "Sofia Al-Mansoor",
+      "certifications": [
+        "Emergency",
+        "Pediatrics"
+      ],
+      "weekly_hours": 20,
+      "base_rate": 57.0,
+      "circadian_preference": "Morning",
+      "distance_miles": 10,
+      "phone": "+1-555-0101"
+    },
+    {
+      "id": "NURSE_011",
+      "name": "Liam O'Connor",
+      "certifications": [
+        "Emergency",
+        "ICU"
+      ],
+      "weekly_hours": 36,
+      "base_rate": 53.0,
+      "circadian_preference": "Flexible",
+      "distance_miles": 18,
+      "phone": "+1-555-0099"
+    },
+    {
+      "id": "NURSE_012",
+      "name": "Grace Hopper",
+      "certifications": [
+        "ICU",
+        "Pediatrics"
+      ],
+      "weekly_hours": 40,
+      "base_rate": 60.0,
+      "circadian_preference": "Flexible",
+      "distance_miles": 4,
+      "phone": "+1-555-0088"
+    },
+    {
+      "id": "NURSE_013",
+      "name": "Oliver Smith",
+      "certifications": [
+        "ICU"
+      ],
+      "weekly_hours": 40,
+      "base_rate": 55.0,
+      "circadian_preference": "Night",
+      "distance_miles": 11,
+      "phone": "+1-555-0077"
+    },
+    {
+      "id": "NURSE_014",
+      "name": "Emma Johnson",
+      "certifications": [
+        "Emergency"
+      ],
+      "weekly_hours": 36,
+      "base_rate": 50.0,
+      "circadian_preference": "Morning",
+      "distance_miles": 7,
+      "phone": "+1-555-0066"
+    },
+    {
+      "id": "NURSE_015",
+      "name": "Lucas Miller",
+      "certifications": [
+        "Emergency",
+        "ICU"
+      ],
+      "weekly_hours": 48,
+      "base_rate": 56.0,
+      "circadian_preference": "Flexible",
+      "distance_miles": 15,
+      "phone": "+1-555-0055"
+    },
+    {
+      "id": "NURSE_016",
+      "name": "Mia Brown",
+      "certifications": [
+        "Pediatrics"
+      ],
+      "weekly_hours": 24,
+      "base_rate": 48.0,
+      "circadian_preference": "Morning",
+      "distance_miles": 9,
+      "phone": "+1-555-0044"
+    },
+    {
+      "id": "NURSE_017",
+      "name": "Ethan Garcia",
+      "certifications": [
+        "ICU",
+        "Pediatrics"
+      ],
+      "weekly_hours": 32,
+      "base_rate": 58.0,
+      "circadian_preference": "Night",
+      "distance_miles": 13,
+      "phone": "+1-555-0033"
+    },
+    {
+      "id": "NURSE_018",
+      "name": "Isabella Davis",
+      "certifications": [
+        "Emergency",
+        "Pediatrics"
+      ],
+      "weekly_hours": 40,
+      "base_rate": 52.0,
+      "circadian_preference": "Flexible",
+      "distance_miles": 5,
+      "phone": "+1-555-0022"
+    }
+  ],
+  "schedule": [
+    {
+      "id": "SHIFT_001",
+      "date": "2026-06-15",
+      "shift_type": "Morning",
+      "department": "Emergency",
+      "assigned_nurses": [
+        "NURSE_002",
+        "NURSE_004",
+        "NURSE_007"
+      ],
+      "acuity_level": 3,
+      "predicted_wait_time": 42.5,
+      "status": "Staffed"
+    },
+    {
+      "id": "SHIFT_002",
+      "date": "2026-06-15",
+      "shift_type": "Night",
+      "department": "Emergency",
+      "assigned_nurses": [
+        "NURSE_001",
+        "NURSE_006"
+      ],
+      "acuity_level": 4,
+      "predicted_wait_time": 58.0,
+      "status": "Staffed"
+    },
+    {
+      "id": "SHIFT_003",
+      "date": "2026-06-16",
+      "shift_type": "Morning",
+      "department": "Emergency",
+      "assigned_nurses": [
+        "NURSE_002",
+        "NURSE_005"
+      ],
+      "acuity_level": 3,
+      "predicted_wait_time": 55.0,
+      "status": "Staffed"
+    }
+  ],
+  "memory": {
+    "nurse_refusal_count": {
+      "NURSE_002": 1
+    },
+    "incentive_bonus_threshold": 45.0
+  },
+  "logs": [],
+  "audit_logs": []
+}

@@ -1,0 +1,46 @@
+# XGBoost Model Improvement Plan
+
+This plan outlines the steps to dramatically improve the performance and robustness of the ER wait-time prediction model by introducing standard Machine Learning feature engineering techniques and hyperparameter tuning.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **UI Changes vs Hardcoded Defaults**
+> Since we are adding `hospital_name` and `region` as features to the model, the model will require these inputs to make a prediction. 
+> - **Option A (No UI Change)**: I can hardcode default values (e.g., `hospital_name="Riverside Medical Center"`, `region="Urban"`) in the backend prediction endpoint. The dashboard UI will not change.
+> - **Option B (Update UI)**: I can update the Streamlit Dashboard and the backend API to allow the user to select the Hospital and Region when performing risk assessments.
+> 
+> **Please let me know which option you prefer!**
+
+## Proposed Changes
+
+### `backend/model.py`
+
+#### [MODIFY] [model.py](file:///d:/Work/Springboard/ANTIGRAVITY-SCRATCH/day2/agy-cli-projects-2/ER-Wait-Time/nurse_staffing_system/backend/model.py)
+- Update the `features` list to include `hospital_name` and `region`.
+- Introduce a scikit-learn `Pipeline` and `ColumnTransformer`:
+  - **One-Hot Encoding**: Apply `OneHotEncoder` to `hospital_name` and `region`.
+  - **Cyclical Encoding**: Apply a custom transformation (sine/cosine) to the cyclical time features (`month`, `visithour`, `day_of_week`).
+  - **Passthrough**: Keep the remaining numeric features as they are.
+- Replace the hardcoded XGBoost parameters with a `RandomizedSearchCV` implementation to search over a grid of hyperparameters (`n_estimators`, `learning_rate`, `max_depth`, `subsample`) using 3-fold cross-validation.
+- Update `predict_wait_time` to accept `hospital_name` and `region` as arguments, package them into the dataframe, and pass them through the saved `Pipeline`.
+
+### `backend/server.py`
+
+#### [MODIFY] [server.py](file:///d:/Work/Springboard/ANTIGRAVITY-SCRATCH/day2/agy-cli-projects-2/ER-Wait-Time/nurse_staffing_system/backend/server.py)
+- Update the `/api/predict_wait` endpoint to accept `hospital_name` and `region` from the JSON payload (or use defaults if Option A is chosen).
+
+### `frontend/dashboard.py` (Only if Option B is chosen)
+
+#### [MODIFY] [dashboard.py](file:///d:/Work/Springboard/ANTIGRAVITY-SCRATCH/day2/agy-cli-projects-2/ER-Wait-Time/nurse_staffing_system/frontend/dashboard.py)
+- Update `predict_wait_time` frontend helper function to pass the new variables.
+- Add Streamlit dropdowns for Hospital Name and Region in the "Shift Scenario Configuration" section.
+
+## Verification Plan
+
+### Automated Tests
+- The script `backend/model.py` will be executed to trigger the new training pipeline.
+- I will verify that the printed R² score and MSE show improvement or parity without overfitting.
+
+### Manual Verification
+- We will open the Streamlit UI and run a test prediction through the "Assess ER Wait-Time Risk" button to ensure the frontend successfully communicates with the newly upgraded model pipeline.

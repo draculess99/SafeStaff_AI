@@ -1,0 +1,14 @@
+`process_kaggle_data.py` is essentially a "clean-up and translation" script. Its entire job is to take a messy, raw dataset downloaded from Kaggle and reformat it so that our machine learning model can actually understand it. 
+
+Here is **exactly** what it does, step-by-step:
+
+1. **Reads the Raw Data:** It loads the raw Kaggle file (`ER Wait Time Dataset.csv`).
+2. **Transforms the Columns:** The raw dataset has column names and data types that our model doesn't understand, so it translates them. Specifically:
+   - It renames `"Facility Size (Beds)"` to `"facility_size_beds"`.
+   - It takes the raw `"Visit Date"` timestamp (e.g., "2023-10-05 14:30:00") and rips it apart to extract just the `"month"` (10), `"visithour"` (14), and `"day_of_week"` (Thursday).
+   - It takes text like `"Urgency Level: Critical"` and turns it into a math-friendly integer (e.g., `4`).
+   - It takes the `"Nurse-to-Patient Ratio"` (which Kaggle stores as an integer like `4` for 1-to-4) and turns it into a decimal ratio (like `0.25`).
+3. **Filters the Data:** It strips out any extra columns from the Kaggle dataset that we don't care about, keeping only the 11 core features our system uses.
+4. **Saves the Clean Data:** It saves this newly cleaned and perfectly formatted dataset as `er_wait_time_real.csv`.
+
+In short: It translates raw human data into clean machine data!

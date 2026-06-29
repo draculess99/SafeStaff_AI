@@ -1,0 +1,15 @@
+Here are three key ways you can modify your agent architecture to make them work better, along with the reasoning for why they help:
+
+---
+
+### 1. Give Agents Specific Tools (Function Calling)
+* **What to modify**: Instead of sending all nurse details to the agent in a massive prompt, define structured Python functions (e.g., `get_hourly_rate(nurse_id)`, `check_certifications(nurse_id)`) and register them as **tools** in the Google ADK agent configurations.
+* **Why it helps**: The agent will dynamically decide to call only the functions it needs to gather data. This prevents prompt clutter, drastically reduces token costs, and ensures the agent makes decisions based on precise database lookups rather than hallucinated details.
+
+### 2. Implement a Self-Correction Loop (Reflective Agents)
+* **What to modify**: Add a **Validator Agent** at the end of the multi-agent debate chain. The Validator's role is to critique the Arbiter's recommendations against compliance rules before showing them to the human supervisor.
+* **Why it helps**: If the Arbiter makes a recommendation that violates a constraint (such as overtime hours), the Validator will intercept it and ask the Arbiter to choose a different candidate. This ensures that the recommendations reaching the human supervisor are high-quality, pre-screened, and correct.
+
+### 3. Add Few-Shot Examples (In-Context Learning)
+* **What to modify**: Add 2 or 3 examples of "ideal scheduling decisions" (e.g., choosing a cheaper non-overtime nurse over an overtime specialist during low acuity shifts) directly into the system instructions of the **Financial Auditor** and **Patient Safety** agents.
+* **Why it helps**: LLMs learn patterns extremely well from examples. Providing a few past decisions guides the agents on how to balance safety, compliance, and cost constraints under different scenarios.
