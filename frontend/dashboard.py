@@ -14,6 +14,12 @@ from backend.ui_helpers import (
     HELPER_SUBMIT_DECISION
 )
 
+print("=== SafeStaff Streamlit startup ===")
+print("Current working directory:", os.getcwd())
+print("Files in current directory:", os.listdir("."))
+print("BACKEND_URL:", os.getenv("BACKEND_URL"))
+print("API_BASE_URL:", os.getenv("API_BASE_URL"))
+
 # Config
 st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone", layout="wide", initial_sidebar_state="expanded")
 
