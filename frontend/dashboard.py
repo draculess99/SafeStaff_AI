@@ -17,7 +17,7 @@ from backend.ui_helpers import (
 # Config
 st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone", layout="wide", initial_sidebar_state="expanded")
 
-API_BASE_URL = "http://127.0.0.1:5000"
+API_BASE_URL = "https://wonderful-laughter-production-92d9.up.railway.app/health"
 
 # Session state init
 if "audit_trail" not in st.session_state:
