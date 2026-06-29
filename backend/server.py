@@ -14,6 +14,10 @@ db = JSONDatabase()
 def get_nurses():
     return jsonify(db.get_nurses())
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
 @app.route("/api/nurses", methods=["POST"])
 def add_nurse():
     try:
