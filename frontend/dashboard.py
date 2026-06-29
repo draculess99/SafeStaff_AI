@@ -17,7 +17,18 @@ from backend.ui_helpers import (
 # Config
 st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone", layout="wide", initial_sidebar_state="expanded")
 
-API_BASE_URL = "https://wonderful-laughter-production-92d9.up.railway.app/health"
+# Backend API base URL. Do NOT include /health here.
+# Railway should set BACKEND_URL or API_BASE_URL to the backend service root:
+# https://wonderful-laughter-production-92d9.up.railway.app
+API_BASE_URL = os.getenv(
+    "BACKEND_URL",
+    os.getenv("API_BASE_URL", "https://wonderful-laughter-production-92d9.up.railway.app")
+).rstrip("/")
+
+# Safety guard: if someone accidentally enters the health endpoint as the base URL,
+# strip it back to the service root so /api/... calls do not become /health/api/...
+if API_BASE_URL.endswith("/health"):
+    API_BASE_URL = API_BASE_URL[:-len("/health")]
 
 # Session state init
 if "audit_trail" not in st.session_state:
