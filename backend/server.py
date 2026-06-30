@@ -4,7 +4,7 @@ import uuid
 import datetime
 from flask import Flask, jsonify, request
 from database.database import JSONDatabase
-from backend.model import predict_wait_time, train_model, CSV_PATH, MODEL_PATH, load_model_payload, clear_model_payload_cache
+from backend.model import predict_wait_time, train_model, CSV_PATH, MODEL_PATH
 from typing import Dict, Any, List
 
 app = Flask(__name__)
@@ -13,6 +13,24 @@ db = JSONDatabase()
 @app.route("/api/nurses", methods=["GET"])
 def get_nurses():
     return jsonify(db.get_nurses())
+
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({
+        "service": "SafeStaff AI Backend",
+        "status": "ok",
+        "health": "/health",
+        "predict_wait": "/api/predict_wait"
+    })
+
+@app.route("/health", methods=["GET"])
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({
+        "status": "ok",
+        "service": "SafeStaff AI Backend",
+        "research_modules": "loaded"
+    })
 
 @app.route("/api/nurses", methods=["POST"])
 def add_nurse():
@@ -110,6 +128,15 @@ def predict_wait():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 400
+
+@app.route("/predict", methods=["POST"])
+def predict_alias():
+    """Compatibility endpoint for quick Railway/browser/API tests.
+
+    The Streamlit frontend uses /api/predict_wait, but /predict is useful
+    for simple external tests and avoids 404 confusion.
+    """
+    return predict_wait()
 
 @app.route("/api/resolve_shortage", methods=["POST"])
 def resolve_shortage():
@@ -278,13 +305,6 @@ def reject_resolution():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/health", methods=["GET"])
-def health_check():
-    return jsonify({
-        "status": "ok",
-        "research_modules": "loaded"
-    })
-
 @app.route("/research-modules/status", methods=["GET"])
 def modules_status():
     status = {}
@@ -326,9 +346,9 @@ def generate_live_debate():
         rejected_candidates = data.get("rejected_candidates", [])
         model_target = data.get("model", "gemini-1.5-flash")
         
-        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+        api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            return jsonify({"success": False, "error": "GOOGLE_API_KEY or GEMINI_API_KEY environment variable is not set."}), 500
+            return jsonify({"success": False, "error": "GEMINI_API_KEY environment variable not found"}), 400
             
         prompt = f"""
         Hospital Scenario Context:
@@ -355,7 +375,11 @@ def generate_live_debate():
         try:
             import google.generativeai as genai
             
-            # Use the same key resolved above.
+            # Ensure API key is available
+            api_key = os.environ.get("GOOGLE_API_KEY", "")
+            if not api_key:
+                return jsonify({"success": False, "error": "GOOGLE_API_KEY environment variable is not set."}), 500
+                
             genai.configure(api_key=api_key)
             
             model = genai.GenerativeModel(
@@ -441,7 +465,6 @@ def record_live_data():
 def trigger_train():
     try:
         mse, r2 = train_model(CSV_PATH, MODEL_PATH)
-        clear_model_payload_cache()
         return jsonify({"success": True, "metrics": {"mse": mse, "r2": r2}})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -451,11 +474,11 @@ def retrain_and_reload():
     try:
         # Retrain model (includes live data)
         mse, r2 = train_model(CSV_PATH, MODEL_PATH)
-        clear_model_payload_cache()
         # Reload model into memory (global variable)
         global xgb_model
         import pickle
-        payload = load_model_payload(MODEL_PATH)
+        with open(MODEL_PATH, "rb") as f:
+            payload = pickle.load(f)
         xgb_model = payload["model"]
         return jsonify({"success": True, "metrics": {"mse": mse, "r2": r2}})
     except Exception as e:
@@ -469,10 +492,10 @@ def reset_live_data():
             os.remove(live_path)
         # Retrain model (this clears live data since the file is gone)
         mse, r2 = train_model(CSV_PATH, MODEL_PATH)
-        clear_model_payload_cache()
         global xgb_model
         import pickle
-        payload = load_model_payload(MODEL_PATH)
+        with open(MODEL_PATH, "rb") as f:
+            payload = pickle.load(f)
         xgb_model = payload["model"]
         return jsonify({"success": True, "message": "Live data reset and model retrained on original dataset.", "metrics": {"mse": mse, "r2": r2}})
     except Exception as e:
@@ -557,7 +580,8 @@ def model_evaluation():
         if not os.path.exists(MODEL_PATH):
             return jsonify({"success": False, "error": "Model not trained yet."}), 400
 
-        payload = load_model_payload(MODEL_PATH)
+        with open(MODEL_PATH, "rb") as f:
+            payload = pickle.load(f)
 
         model_pipeline = payload["model"]
         features_list = payload["features"]
@@ -694,12 +718,8 @@ if __name__ == "__main__":
         train_model(CSV_PATH, MODEL_PATH)
     # Load model into memory using pickle since it's a serialized Pipeline dictionary
     import pickle
-    payload = load_model_payload(MODEL_PATH)
+    with open(MODEL_PATH, "rb") as f:
+        payload = pickle.load(f)
     xgb_model = payload["model"]
-
-    host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", "5000"))
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(host=host, port=port, debug=debug, use_reloader=False)
-
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
