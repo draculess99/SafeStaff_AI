@@ -17,7 +17,18 @@ from backend.ui_helpers import (
 # Config
 st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone", layout="wide", initial_sidebar_state="expanded")
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:5000")
+# Backend API base URL. Do NOT include /health here.
+# Railway should set BACKEND_URL to the backend service root, e.g.
+# https://wonderful-laughter-production-92d9.up.railway.app
+API_BASE_URL = os.getenv(
+    "BACKEND_URL",
+    os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
+).rstrip("/")
+
+# Safety guard: if someone accidentally enters the health endpoint as the base URL,
+# strip it back to the service root so /api/... calls do not become /health/api/...
+if API_BASE_URL.endswith("/health"):
+    API_BASE_URL = API_BASE_URL[:-len("/health")]
 
 # Session state init
 if "audit_trail" not in st.session_state:
@@ -1537,6 +1548,48 @@ with tab1:
                     
                     if result.get("success"):
                         st.session_state.pending_log = result["log"]
+
+                        # If Live Gemini mode is selected, explicitly call the live debate endpoint.
+                        # The shortage solver can still return a local-rule result, so this call is
+                        # what actually causes Gemini token usage to appear in the UI.
+                        if enable_llm:
+                            try:
+                                live_payload = {
+                                    "context": {
+                                        "scenario": scen,
+                                        "solver_payload": payload,
+                                        "committee_evidence": st.session_state.pending_log.get("committee_evidence", {}),
+                                        "explainability_narrative": st.session_state.pending_log.get("explainability_narrative", "")
+                                    },
+                                    "rec_nurses": st.session_state.pending_log.get("resolved_nurses", []),
+                                    "rejected_candidates": st.session_state.pending_log.get("rejected_candidates", []),
+                                    "model": st.session_state.get("model_option", "gemini-1.5-flash")
+                                }
+                                debate_res = requests.post(f"{API_BASE_URL}/api/generate_live_debate", json=live_payload, timeout=60)
+                                debate_json = debate_res.json()
+                                if debate_json.get("success"):
+                                    debate = debate_json.get("debate", {})
+                                    st.session_state.agent_debate = debate
+
+                                    # Copy Gemini token counts into pending_log['costs'] so the sidebar
+                                    # token widget updates immediately after rerun.
+                                    st.session_state.pending_log.setdefault("costs", {})
+                                    for k in ["llm_calls", "prompt_tokens", "response_tokens", "total_tokens", "estimated_api_cost"]:
+                                        st.session_state.pending_log["costs"][k] = debate.get(k, st.session_state.pending_log["costs"].get(k, 0))
+
+                                    # Keep the older token_usage field in sync for sections that read it.
+                                    st.session_state.pending_log["token_usage"] = {
+                                        "prompt": debate.get("prompt_tokens", 0),
+                                        "response": debate.get("response_tokens", 0),
+                                        "total": debate.get("total_tokens", 0),
+                                        "llm_calls": debate.get("llm_calls", 0)
+                                    }
+                                    st.caption(f"✅ Live Gemini debate called. Tokens used: {debate.get('total_tokens', 0)}")
+                                else:
+                                    st.warning(f"Live Gemini debate did not run: {debate_json.get('error', 'Unknown error')}")
+                            except Exception as live_e:
+                                st.warning(f"Live Gemini debate failed; using local recommendation fallback: {live_e}")
+
                         # Just do the progress bar once
                         steps = st.session_state.pending_log["resolution_steps"]
                         for i, step in enumerate(steps):
