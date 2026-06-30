@@ -543,6 +543,12 @@ def get_dashboard_bootstrap_data():
             results[key] = _fetch_records(endpoint, list_keys, 5)
     return results
 
+def clear_dashboard_bootstrap_cache():
+    try:
+        get_dashboard_bootstrap_data.clear()
+    except Exception:
+        pass
+
 def get_nurses():
     return get_dashboard_bootstrap_data().get("nurses", [])
 
@@ -738,6 +744,8 @@ if st.sidebar.button("🔄 Reset Database to Mock Values", use_container_width=T
         st.session_state.risk_assessed = False
         st.session_state.pending_log = None
         st.sidebar.success(res.json()["message"])
+        clear_dashboard_bootstrap_cache()
+        st.rerun()
     except Exception as e:
         st.sidebar.error(f"Failed to reset database: {e}")
 
@@ -2425,6 +2433,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
                     st.session_state.risk_assessed = False
                     st.session_state.last_decision_status = "Approved"
                     st.session_state.cno_chat_history = []
+                    clear_dashboard_bootstrap_cache()
                     st.rerun()
                 else:
                     st.error(res_json.get("error", "Roster update failed"))
@@ -2517,6 +2526,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
                         st.session_state.risk_assessed = False
                         st.session_state.last_decision_status = f"Override: {override_nurse}"
                         st.session_state.cno_chat_history = []
+                        clear_dashboard_bootstrap_cache()
                         st.rerun()
                     else:
                         st.error(res_json.get("error", "Override failed"))
