@@ -584,7 +584,10 @@ def predict_wait_time(facility_size_beds, month, day_of_week, visithour, urgency
     }
     try:
         res = requests.post(f"{API_BASE_URL}/api/predict_wait", json=payload, timeout=15)
-        return res.json()["predicted_wait_time"]
+        data = res.json()
+        if not res.ok or data.get("success") is False:
+            return 0.0
+        return data.get("predicted_wait_time", 0.0)
     except Exception:
         return 0.0
 
@@ -1434,21 +1437,47 @@ if workflow_page == "📋 Roster & Shortage Solver":
         
         try:
             res = requests.post(f"{API_BASE_URL}/api/predict_wait", json=payload, timeout=15)
-            res_json = res.json()
-            pred = res_json["predicted_wait_time"]
-            safety_thresh = res_json["safety_threshold"]
-            evidence = res_json["evidence"]
-            
-            st.session_state.pred_wait = pred
-            st.session_state.safety_thresh = safety_thresh
-            st.session_state.evidence = evidence
-            
-            needed = evidence["final_additional_nurses_needed"]
-            st.session_state.estimated_needed = needed
-            st.session_state.risk_assessed = True
-            st.rerun()
+
+            try:
+                res_json = res.json()
+            except Exception:
+                st.error(
+                    f"Prediction endpoint did not return JSON. "
+                    f"HTTP {res.status_code}. Response: {res.text[:500]}"
+                )
+                res_json = None
+
+            if res_json is not None:
+                if not res.ok or res_json.get("success") is False:
+                    backend_error = res_json.get("error") or res_json.get("message") or res.text[:500]
+                    st.error(
+                        f"Prediction backend error. HTTP {res.status_code}. "
+                        f"{backend_error}"
+                    )
+                    st.caption(f"Backend URL used: {API_BASE_URL}/api/predict_wait")
+                else:
+                    pred = res_json.get("predicted_wait_time")
+                    safety_thresh = res_json.get("safety_threshold")
+                    evidence = res_json.get("evidence", {})
+
+                    if pred is None:
+                        st.error(
+                            "Prediction response did not include 'predicted_wait_time'. "
+                            f"Response keys: {list(res_json.keys())}"
+                        )
+                        st.json(res_json)
+                    else:
+                        st.session_state.pred_wait = pred
+                        st.session_state.safety_thresh = safety_thresh if safety_thresh is not None else 0
+                        st.session_state.evidence = evidence
+
+                        needed = evidence.get("final_additional_nurses_needed", 0)
+                        st.session_state.estimated_needed = needed
+                        st.session_state.risk_assessed = True
+                        st.rerun()
         except Exception as e:
-            st.error(f"Error predicting wait time: {e}")
+            st.error(f"Error calling prediction endpoint: {e}")
+            st.caption(f"Backend URL used: {API_BASE_URL}/api/predict_wait")
             
     if st.session_state.get("risk_assessed"):
         pred = st.session_state.get("pred_wait", 0)
