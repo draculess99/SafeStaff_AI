@@ -22,7 +22,7 @@ st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone",
 # https://wonderful-laughter-production-92d9.up.railway.app
 API_BASE_URL = os.getenv(
     "BACKEND_URL",
-    os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
+    os.getenv("API_BASE_URL", "https://safestaffai-production.up.railway.app")
 ).rstrip("/")
 
 # Safety guard: if someone accidentally enters the health endpoint as the base URL,
@@ -441,37 +441,66 @@ st.markdown("""
 
 
 # Helper function to query backend
+
+def normalize_records(payload, list_keys=("data", "results", "items", "schedule", "nurses", "logs", "audit_logs")):
+    """Normalize backend JSON into a list of row dictionaries for DataFrame rendering."""
+    if payload is None:
+        return []
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        for key in list_keys:
+            value = payload.get(key)
+            if isinstance(value, list):
+                return value
+        # If this is a single row object, wrap it so pandas gets a list of records.
+        if payload and all(not isinstance(v, (list, dict)) for v in payload.values()):
+            return [payload]
+    return []
+
+@st.cache_data(ttl=30)
 def get_nurses():
     try:
-        response = requests.get(f"{API_BASE_URL}/api/nurses")
-        return response.json()
+        response = requests.get(f"{API_BASE_URL}/api/nurses", timeout=5)
+        if response.ok:
+            return normalize_records(response.json(), list_keys=("nurses", "data", "results", "items"))
+        return []
     except Exception:
         return []
 
+@st.cache_data(ttl=30)
 def get_schedule():
     try:
-        response = requests.get(f"{API_BASE_URL}/api/schedule")
-        return response.json()
+        response = requests.get(f"{API_BASE_URL}/api/schedule", timeout=5)
+        if response.ok:
+            return normalize_records(response.json(), list_keys=("schedule", "data", "results", "items"))
+        return []
     except Exception:
         return []
 
+@st.cache_data(ttl=30)
 def get_logs():
     try:
-        response = requests.get(f"{API_BASE_URL}/api/logs")
-        return response.json()
+        response = requests.get(f"{API_BASE_URL}/api/logs", timeout=5)
+        if response.ok:
+            return normalize_records(response.json(), list_keys=("logs", "data", "results", "items"))
+        return []
     except Exception:
         return []
 
+@st.cache_data(ttl=30)
 def get_audit_logs():
     try:
-        response = requests.get(f"{API_BASE_URL}/api/audit_logs")
-        return response.json()
+        response = requests.get(f"{API_BASE_URL}/api/audit_logs", timeout=5)
+        if response.ok:
+            return normalize_records(response.json(), list_keys=("audit_logs", "logs", "data", "results", "items"))
+        return []
     except Exception:
         return []
 
 def add_audit_log(entry):
     try:
-        response = requests.post(f"{API_BASE_URL}/api/audit_logs", json=entry)
+        response = requests.post(f"{API_BASE_URL}/api/audit_logs", json=entry, timeout=15)
         return response.json().get("success", False)
     except Exception:
         return False
@@ -489,26 +518,26 @@ def predict_wait_time(facility_size_beds, month, day_of_week, visithour, urgency
         "region": region
     }
     try:
-        res = requests.post(f"{API_BASE_URL}/api/predict_wait", json=payload)
+        res = requests.post(f"{API_BASE_URL}/api/predict_wait", json=payload, timeout=15)
         return res.json()["predicted_wait_time"]
     except Exception:
         return 0.0
 
 def get_inflow_memory_state():
     try:
-        return requests.get(f"{API_BASE_URL}/api/inflow-memory").json()
+        return requests.get(f"{API_BASE_URL}/api/inflow-memory", timeout=5).json()
     except Exception:
         return {}
 
 def forecast_inflow_memory(telemetry):
     try:
-        return requests.post(f"{API_BASE_URL}/api/inflow-forecast", json=telemetry).json()
+        return requests.post(f"{API_BASE_URL}/api/inflow-forecast", json=telemetry, timeout=15).json()
     except Exception:
         return {}
 
 def update_inflow_memory_state(forecast, actual):
     try:
-        return requests.post(f"{API_BASE_URL}/api/update-inflow-memory", json={"forecasted_volume": forecast, "actual_volume": actual}).json()
+        return requests.post(f"{API_BASE_URL}/api/update-inflow-memory", json={"forecasted_volume": forecast, "actual_volume": actual}, timeout=15).json()
     except Exception:
         return {}
 
@@ -1046,7 +1075,7 @@ st.markdown("---")
 with st.expander("Recent Inflow Memory History", expanded=False):
     st.markdown("##### Recent Inflow Memory History (`database/inflow_memory_history.json`)")
     try:
-        hist_data = requests.get(f"{API_BASE_URL}/api/inflow-history").json()
+        hist_data = requests.get(f"{API_BASE_URL}/api/inflow-history", timeout=5).json()
         if hist_data:
             st.json(hist_data[-5:])
         else:
@@ -1152,23 +1181,30 @@ with tab1:
         st.markdown("---")
 
     st.subheader("🏥 Shift Schedule & Status")
-    schedule = get_schedule()
+    schedule = normalize_records(get_schedule(), list_keys=("schedule", "data", "results", "items"))
     if schedule:
-        sched_df = pd.DataFrame(schedule)
-        sched_df = sched_df[["id", "date", "shift_type", "assigned_nurses", "acuity_level", "predicted_wait_time", "status"]]
+        sched_df = pd.DataFrame.from_records(schedule)
+        expected_cols = ["id", "date", "shift_type", "assigned_nurses", "acuity_level", "predicted_wait_time", "status"]
+        for col in expected_cols:
+            if col not in sched_df.columns:
+                sched_df[col] = ""
+        sched_df = sched_df[expected_cols]
         st.markdown(render_styled_table(sched_df), unsafe_allow_html=True)
     else:
         st.info("No active schedules found.")
-        
+
     st.subheader("👩⚕️ Nurse Database Registry")
-    nurses = get_nurses()
+    nurses = normalize_records(get_nurses(), list_keys=("nurses", "data", "results", "items"))
     if nurses:
-        nurses_df = pd.DataFrame(nurses)
-        nurses_df = nurses_df[["id", "name", "certifications", "weekly_hours", "base_rate", "circadian_preference", "distance_miles"]]
+        nurses_df = pd.DataFrame.from_records(nurses)
+        expected_cols = ["id", "name", "certifications", "weekly_hours", "base_rate", "circadian_preference", "distance_miles"]
+        for col in expected_cols:
+            if col not in nurses_df.columns:
+                nurses_df[col] = ""
+        nurses_df = nurses_df[expected_cols]
         st.markdown(render_styled_table(nurses_df), unsafe_allow_html=True)
     else:
         st.info("Nurse database is empty.")
-        
     with st.expander("➕ Add Custom Nurse to Registry"):
         with st.form("add_nurse_form", clear_on_submit=True):
             new_name = st.text_input("Name")
@@ -1314,7 +1350,7 @@ with tab1:
         }
         
         try:
-            res = requests.post(f"{API_BASE_URL}/api/predict_wait", json=payload)
+            res = requests.post(f"{API_BASE_URL}/api/predict_wait", json=payload, timeout=15)
             res_json = res.json()
             pred = res_json["predicted_wait_time"]
             safety_thresh = res_json["safety_threshold"]
@@ -2982,7 +3018,7 @@ with tab7:
     # Load evaluation data from backend
     if st.button("🔄 Load Model Evaluation Data", type="primary", use_container_width=True, key="load_eval_btn"):
         try:
-            eval_resp = requests.get(f"{API_BASE_URL}/api/model-evaluation")
+            eval_resp = requests.get(f"{API_BASE_URL}/api/model-evaluation", timeout=5)
             if eval_resp.status_code == 200:
                 st.session_state.model_eval_data = eval_resp.json()
                 st.success("Model evaluation data loaded successfully!")
