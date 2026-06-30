@@ -21,6 +21,30 @@ DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "database")
 CSV_PATH = os.path.join(DATA_DIR, "er_wait_time.csv")
 MODEL_PATH = os.path.join(BASE_DIR, "xgboost_model.pkl")
 
+# In-memory model payload cache for production API calls.
+# Avoids re-reading and unpickling xgboost_model.pkl on every /api/predict_wait request.
+_MODEL_PAYLOAD_CACHE = {}
+
+def load_model_payload(model_path: str = MODEL_PATH):
+    """Load the model payload once and reuse it until the file changes on disk."""
+    if not os.path.exists(model_path):
+        train_model(CSV_PATH, model_path)
+
+    mtime = os.path.getmtime(model_path)
+    cached = _MODEL_PAYLOAD_CACHE.get(model_path)
+    if cached and cached.get("mtime") == mtime:
+        return cached["payload"]
+
+    with open(model_path, "rb") as f:
+        payload = pickle.load(f)
+
+    _MODEL_PAYLOAD_CACHE[model_path] = {"mtime": mtime, "payload": payload}
+    return payload
+
+def clear_model_payload_cache():
+    """Clear cached model payload after retraining/reset."""
+    _MODEL_PAYLOAD_CACHE.clear()
+
 HOSPITALS = [
     "Northside Community Hospital",
     "Riverside Medical Center",
@@ -413,12 +437,8 @@ def predict_wait_time(
     region: str = "Urban",
     model_path: str = MODEL_PATH
 ) -> float:
-    if not os.path.exists(model_path):
-        train_model(CSV_PATH, model_path)
-        
-    with open(model_path, "rb") as f:
-        payload = pickle.load(f)
-        
+    payload = load_model_payload(model_path)
+
     model = payload["model"]
     features_list = payload["features"]
     

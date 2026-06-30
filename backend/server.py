@@ -4,7 +4,7 @@ import uuid
 import datetime
 from flask import Flask, jsonify, request
 from database.database import JSONDatabase
-from backend.model import predict_wait_time, train_model, CSV_PATH, MODEL_PATH
+from backend.model import predict_wait_time, train_model, CSV_PATH, MODEL_PATH, load_model_payload, clear_model_payload_cache
 from typing import Dict, Any, List
 
 app = Flask(__name__)
@@ -441,6 +441,7 @@ def record_live_data():
 def trigger_train():
     try:
         mse, r2 = train_model(CSV_PATH, MODEL_PATH)
+        clear_model_payload_cache()
         return jsonify({"success": True, "metrics": {"mse": mse, "r2": r2}})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -450,11 +451,11 @@ def retrain_and_reload():
     try:
         # Retrain model (includes live data)
         mse, r2 = train_model(CSV_PATH, MODEL_PATH)
+        clear_model_payload_cache()
         # Reload model into memory (global variable)
         global xgb_model
         import pickle
-        with open(MODEL_PATH, "rb") as f:
-            payload = pickle.load(f)
+        payload = load_model_payload(MODEL_PATH)
         xgb_model = payload["model"]
         return jsonify({"success": True, "metrics": {"mse": mse, "r2": r2}})
     except Exception as e:
@@ -468,10 +469,10 @@ def reset_live_data():
             os.remove(live_path)
         # Retrain model (this clears live data since the file is gone)
         mse, r2 = train_model(CSV_PATH, MODEL_PATH)
+        clear_model_payload_cache()
         global xgb_model
         import pickle
-        with open(MODEL_PATH, "rb") as f:
-            payload = pickle.load(f)
+        payload = load_model_payload(MODEL_PATH)
         xgb_model = payload["model"]
         return jsonify({"success": True, "message": "Live data reset and model retrained on original dataset.", "metrics": {"mse": mse, "r2": r2}})
     except Exception as e:
@@ -556,8 +557,7 @@ def model_evaluation():
         if not os.path.exists(MODEL_PATH):
             return jsonify({"success": False, "error": "Model not trained yet."}), 400
 
-        with open(MODEL_PATH, "rb") as f:
-            payload = pickle.load(f)
+        payload = load_model_payload(MODEL_PATH)
 
         model_pipeline = payload["model"]
         features_list = payload["features"]
@@ -694,8 +694,7 @@ if __name__ == "__main__":
         train_model(CSV_PATH, MODEL_PATH)
     # Load model into memory using pickle since it's a serialized Pipeline dictionary
     import pickle
-    with open(MODEL_PATH, "rb") as f:
-        payload = pickle.load(f)
+    payload = load_model_payload(MODEL_PATH)
     xgb_model = payload["model"]
 
     host = os.environ.get("HOST", "0.0.0.0")
