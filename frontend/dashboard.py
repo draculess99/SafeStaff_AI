@@ -277,6 +277,42 @@ st.markdown("""
         border-color: #3b82f6 !important;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
     }
+
+    /* Performance workflow selector: keep the old tab-like look without using st.tabs.
+       This preserves lazy rendering: only the selected workflow executes. */
+    div[role="radiogroup"] {
+        gap: 8px !important;
+        align-items: stretch !important;
+        flex-wrap: wrap !important;
+        margin-bottom: 18px !important;
+    }
+    div[role="radiogroup"] label {
+        background-color: rgba(30, 41, 59, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        padding: 8px 14px !important;
+        margin-right: 6px !important;
+        min-height: 42px !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    div[role="radiogroup"] label:hover {
+        background-color: rgba(51, 65, 85, 0.8) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    div[role="radiogroup"] label:has(input:checked) {
+        color: #ffffff !important;
+        background-color: #2563eb !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+    div[role="radiogroup"] label p {
+        font-size: 1.02rem !important;
+        font-weight: 700 !important;
+        color: #f3f4f6 !important;
+        margin: 0 !important;
+    }
     
     .main .block-container {
         padding-top: 2rem;
@@ -1151,7 +1187,7 @@ def render_styled_table(df):
     html += "</table></div>"
     return html
 
-st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Choose one workflow below. Performance mode renders only the selected section instead of executing all seven tabs on every Streamlit rerun.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Choose a tab below. This keeps the old tab-style workflow, but only renders the selected section for speed.</p>", unsafe_allow_html=True)
 workflow_page = st.radio(
     "Workflow",
     [
