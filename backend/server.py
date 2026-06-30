@@ -255,7 +255,7 @@ def approve_resolution():
             db.update_nurse_hours(nurse_id, 12)
             
         shift_id = target_log.get("shift_id")
-        if not shift_id:
+        if not shift_id or shift_id == "NEW_SHIFT":
             shift_id = "SHIFT_" + str(uuid.uuid4())[:8].upper()
             
         existing_schedule = db.get_schedule()
@@ -280,7 +280,12 @@ def approve_resolution():
             }
             db.add_schedule_shift(new_shift)
             
-        return jsonify({"success": True, "message": "Resolution approved and roster updated successfully."})
+        return jsonify({
+            "success": True,
+            "message": "Resolution approved and roster updated successfully.",
+            "scheduled_shift_id": shift_id,
+            "assigned_nurses": assigned_nurses
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
