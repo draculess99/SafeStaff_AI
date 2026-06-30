@@ -1,6 +1,7 @@
 import json
 import os
 import threading
+import datetime
 from typing import Dict, List, Any, Optional
 
 DB_FILE_PATH = os.path.join(os.path.dirname(__file__), "db.json")
@@ -11,16 +12,59 @@ class JSONDatabase:
         self.filepath = filepath
         self._ensure_db_exists()
 
+    def _empty_db_structure(self) -> Dict[str, Any]:
+        return {
+            "nurses": [],
+            "schedule": [],
+            "memory": {},
+            "logs": [],
+            "audit_logs": []
+        }
+
+    def _needs_demo_seed(self, data: Dict[str, Any]) -> bool:
+        """Return True when the demo nurse registry and shift schedule are missing.
+
+        Railway can start with no db.json, or with a db.json that has empty
+        nurses/schedule arrays. The UI tables are read from GET /api/nurses and
+        GET /api/schedule, so an empty database makes the tables disappear.
+        """
+        nurses = data.get("nurses") or []
+        schedule = data.get("schedule") or []
+        return len(nurses) == 0 and len(schedule) == 0
+
     def _ensure_db_exists(self):
+        # If the database file is missing, seed it with the demo data immediately
+        # instead of creating empty nurses/schedule arrays.
         if not os.path.exists(self.filepath):
-            default_structure = {
-                "nurses": [],
-                "schedule": [],
-                "memory": {},
-                "logs": [],
-                "audit_logs": []
-            }
-            self._write_raw(default_structure)
+            self.reset_db()
+            return
+
+        data = self._read_raw()
+
+        # If Railway or a prior run left an empty db.json, reseed the demo data.
+        if self._needs_demo_seed(data):
+            self.reset_db()
+            return
+
+        # Preserve populated databases, but make sure expected top-level keys exist.
+        changed = False
+        for key, default_value in self._empty_db_structure().items():
+            if key not in data:
+                data[key] = default_value
+                changed = True
+        if changed:
+            self._write_raw(data)
+
+    def ensure_demo_data(self) -> bool:
+        """Ensure GET /api/nurses and GET /api/schedule never return blank demo tables.
+
+        This is intentionally safe: it only seeds when BOTH nurses and schedule
+        are empty. It does not overwrite a populated database.
+        """
+        data = self._read_raw()
+        if self._needs_demo_seed(data):
+            return self.reset_db()
+        return True
 
     def _read_raw(self) -> Dict[str, Any]:
         with lock:
@@ -42,6 +86,7 @@ class JSONDatabase:
                 return False
 
     def get_nurses(self) -> List[Dict[str, Any]]:
+        self.ensure_demo_data()
         return self._read_raw().get("nurses", [])
 
     def get_nurse_by_id(self, nurse_id: str) -> Optional[Dict[str, Any]]:
@@ -68,6 +113,7 @@ class JSONDatabase:
 
 
     def get_schedule(self) -> List[Dict[str, Any]]:
+        self.ensure_demo_data()
         return self._read_raw().get("schedule", [])
 
     def add_schedule_shift(self, shift: Dict[str, Any]) -> bool:
@@ -125,6 +171,8 @@ class JSONDatabase:
         return self._write_raw(data)
 
     def reset_db(self) -> bool:
+        today = datetime.date.today()
+        tomorrow = today + datetime.timedelta(days=1)
         default_data = {
             "nurses": [
                 {
@@ -311,7 +359,7 @@ class JSONDatabase:
             "schedule": [
                 {
                     "id": "SHIFT_001",
-                    "date": "2026-06-15",
+                    "date": today.isoformat(),
                     "shift_type": "Morning",
                     "department": "Emergency",
                     "assigned_nurses": ["NURSE_002", "NURSE_004", "NURSE_007"],
@@ -321,7 +369,7 @@ class JSONDatabase:
                 },
                 {
                     "id": "SHIFT_002",
-                    "date": "2026-06-15",
+                    "date": today.isoformat(),
                     "shift_type": "Night",
                     "department": "Emergency",
                     "assigned_nurses": ["NURSE_001", "NURSE_006"],
@@ -331,7 +379,7 @@ class JSONDatabase:
                 },
                 {
                     "id": "SHIFT_003",
-                    "date": "2026-06-16",
+                    "date": tomorrow.isoformat(),
                     "shift_type": "Morning",
                     "department": "Emergency",
                     "assigned_nurses": ["NURSE_002", "NURSE_005"],
