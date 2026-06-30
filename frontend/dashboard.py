@@ -17,7 +17,7 @@ from backend.ui_helpers import (
 # Config
 st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone", layout="wide", initial_sidebar_state="expanded")
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:5000")
+API_BASE_URL = "http://127.0.0.1:5000"
 
 # Session state init
 if "audit_trail" not in st.session_state:
@@ -1105,7 +1105,7 @@ def render_styled_table(df):
     html += "</table></div>"
     return html
 
-st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: -10px;'>Follow the workflow using the tabs below: Roster → Stress Simulator → AI Committee → Model Performance</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Follow the workflow using the tabs below: Roster → Stress Simulator → AI Committee → Model Performance</p>", unsafe_allow_html=True)
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📋 Roster & Shortage Solver", "⚡ System Stress Simulator", "🔍 Explainability & Token Logs", "📝 Audit Log", "🔬 Research & Validation", "🏛️ AI Committee Debate & Planner", "📈 Model Performance"])
 
 # Tab 1: Roster and Shortage Solver
