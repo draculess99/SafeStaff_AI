@@ -14,29 +14,10 @@ from backend.ui_helpers import (
     HELPER_SUBMIT_DECISION
 )
 
-print("=== SafeStaff Streamlit startup ===")
-print("Current working directory:", os.getcwd())
-print("Files in current directory:", os.listdir("."))
-print("BACKEND_URL:", os.getenv("BACKEND_URL"))
-print("API_BASE_URL:", os.getenv("API_BASE_URL"))
-
 # Config
 st.set_page_config(page_title="SafeStaff AI - Google & Kaggle Agentic Capstone", layout="wide", initial_sidebar_state="expanded")
 
-# Backend API base URL. Do NOT include /health here.
-# Railway should set BACKEND_URL or API_BASE_URL to the backend service root:
-# https://wonderful-laughter-production-92d9.up.railway.app
-API_BASE_URL = os.getenv(
-    "BACKEND_URL",
-    os.getenv("API_BASE_URL", "https://wonderful-laughter-production-92d9.up.railway.app")
-).rstrip("/")
-
-# Safety guard: if someone accidentally enters the health endpoint as the base URL,
-# strip it back to the service root so /api/... calls do not become /health/api/...
-if API_BASE_URL.endswith("/api/health"):
-    API_BASE_URL = API_BASE_URL[:-len("/api/health")]
-elif API_BASE_URL.endswith("/health"):
-    API_BASE_URL = API_BASE_URL[:-len("/health")]
+API_BASE_URL = "http://127.0.0.1:5000"
 
 # Session state init
 if "audit_trail" not in st.session_state:
