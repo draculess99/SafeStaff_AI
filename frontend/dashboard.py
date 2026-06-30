@@ -458,7 +458,7 @@ def normalize_records(payload, list_keys=("data", "results", "items", "schedule"
             return [payload]
     return []
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=120)
 def get_nurses():
     try:
         response = requests.get(f"{API_BASE_URL}/api/nurses", timeout=5)
@@ -468,7 +468,7 @@ def get_nurses():
     except Exception:
         return []
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=120)
 def get_schedule():
     try:
         response = requests.get(f"{API_BASE_URL}/api/schedule", timeout=5)
@@ -478,7 +478,7 @@ def get_schedule():
     except Exception:
         return []
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=120)
 def get_logs():
     try:
         response = requests.get(f"{API_BASE_URL}/api/logs", timeout=5)
@@ -488,7 +488,7 @@ def get_logs():
     except Exception:
         return []
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=120)
 def get_audit_logs():
     try:
         response = requests.get(f"{API_BASE_URL}/api/audit_logs", timeout=5)
@@ -523,9 +523,11 @@ def predict_wait_time(facility_size_beds, month, day_of_week, visithour, urgency
     except Exception:
         return 0.0
 
+@st.cache_data(ttl=120)
 def get_inflow_memory_state():
     try:
-        return requests.get(f"{API_BASE_URL}/api/inflow-memory", timeout=5).json()
+        response = requests.get(f"{API_BASE_URL}/api/inflow-memory", timeout=3)
+        return response.json() if response.ok else {}
     except Exception:
         return {}
 
@@ -604,6 +606,7 @@ Guidelines:
     except Exception as e:
         return f"Error communicating with CNO Agent: {str(e)}"
 
+@st.cache_resource
 def get_feature_importances():
     try:
         import pickle
@@ -1085,22 +1088,25 @@ with st.expander("Recent Inflow Memory History", expanded=False):
 
 with st.expander("Similar Prior ER Memory Events", expanded=False):
     st.markdown("##### Similar Prior ER Memory Events")
-    try:
-        scenario_sig = {
-            "waiting_room_count": st.session_state.waiting_room_count,
-            "ed_occupancy_percent": st.session_state.ed_occupancy_percent,
-            "arrival_pressure": st.session_state.ambulance_arrival_pressure,
-            "boarding_pressure": "High" if st.session_state.boarding_count > 10 else "Low", 
-            "fatigue_pressure": "High" if st.session_state.nurse_callout_rate > 15 else "Low",
-            "acuity_pressure": "High" if st.session_state.scen_acuity < 3 else "Low"
-        }
-        sim_data = requests.post(f"{API_BASE_URL}/api/find_similar_history", json={"scenario_signature": scenario_sig}).json()
-        if sim_data and sim_data.get("similar_events"):
-            st.json(sim_data["similar_events"])
-        else:
-            st.write("No similar events found.")
-    except Exception:
-        st.write("Error loading similar events.")
+    st.caption("This remote lookup is loaded only when requested so the dashboard does not block during normal page rendering.")
+    if st.button("Load Similar Prior ER Memory Events", key="load_similar_memory_events_top"):
+        try:
+            scenario_sig = {
+                "waiting_room_count": st.session_state.waiting_room_count,
+                "ed_occupancy_percent": st.session_state.ed_occupancy_percent,
+                "arrival_pressure": st.session_state.ambulance_arrival_pressure,
+                "boarding_pressure": "High" if st.session_state.boarding_count > 10 else "Low", 
+                "fatigue_pressure": "High" if st.session_state.nurse_callout_rate > 15 else "Low",
+                "acuity_pressure": "High" if st.session_state.scen_acuity < 3 else "Low"
+            }
+            resp = requests.post(f"{API_BASE_URL}/api/find_similar_history", json={"scenario_signature": scenario_sig}, timeout=10)
+            sim_data = resp.json() if resp.ok else {}
+            if sim_data and sim_data.get("similar_events"):
+                st.json(sim_data["similar_events"])
+            else:
+                st.write("No similar events found.")
+        except Exception as e:
+            st.write(f"Error loading similar events: {e}")
 
 st.markdown("---")
 
@@ -1145,11 +1151,25 @@ def render_styled_table(df):
     html += "</table></div>"
     return html
 
-st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Follow the workflow using the tabs below: Roster → Stress Simulator → AI Committee → Model Performance</p>", unsafe_allow_html=True)
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📋 Roster & Shortage Solver", "⚡ System Stress Simulator", "🔍 Explainability & Token Logs", "📝 Audit Log", "🔬 Research & Validation", "🏛️ AI Committee Debate & Planner", "📈 Model Performance"])
+st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Choose one workflow below. Performance mode renders only the selected section instead of executing all seven tabs on every Streamlit rerun.</p>", unsafe_allow_html=True)
+workflow_page = st.radio(
+    "Workflow",
+    [
+        "📋 Roster & Shortage Solver",
+        "⚡ System Stress Simulator",
+        "🔍 Explainability & Token Logs",
+        "📝 Audit Log",
+        "🔬 Research & Validation",
+        "🏛️ AI Committee Debate & Planner",
+        "📈 Model Performance",
+    ],
+    horizontal=True,
+    key="workflow_page",
+    label_visibility="collapsed",
+)
 
 # Tab 1: Roster and Shortage Solver
-with tab1:
+if workflow_page == "📋 Roster & Shortage Solver":
     if st.session_state.get("last_summary"):
         s = st.session_state.last_summary
         st.markdown(f"""
@@ -1742,7 +1762,7 @@ with tab1:
                 "fatigue_pressure": "High" if st.session_state.nurse_callout_rate > 15 else "Low",
                 "acuity_pressure": "High" if st.session_state.scen_acuity < 3 else "Low"
             }
-            sim_data = requests.post(f"{API_BASE_URL}/api/find_similar_history", json={"scenario_signature": scenario_sig}).json()
+            sim_data = requests.post(f"{API_BASE_URL}/api/find_similar_history", json={"scenario_signature": scenario_sig}, timeout=10).json()
             if sim_data and sim_data.get("similar_events"):
                 st.markdown(f"**Memory insight**: The system found {len(sim_data['similar_events'])} similar prior ER states matching the current arrival pressure and occupancy. This supports the current recommendation.", unsafe_allow_html=True)
             else:
@@ -2404,7 +2424,7 @@ with tab1:
                         st.rerun()
                     else:
                         st.error(res_json.get("error", "Override failed"))
-with tab2:
+if workflow_page == "⚡ System Stress Simulator":
     st.subheader("⚡ System Stress Test Simulator")
     st.markdown("Simulate patient surges, staffing call-outs, and acuity shifts to test ER wait-time resilience.")
     
@@ -2576,7 +2596,7 @@ with tab2:
         st.caption("Notice how the 'Sweet Spot' is reached when the Clinical Risk drops (representing safe wait times) without causing a massive spike in Roster Costs.")
 
 # Tab 3: Explainability and Token Logs
-with tab3:
+if workflow_page == "🔍 Explainability & Token Logs":
     st.subheader("🔍 Explainability Reports & Cost Analytics")
     
     logs = get_logs()
@@ -2645,7 +2665,7 @@ with tab3:
                 st.metric("Grand Total Roster Cost", f"${total_staffing_cost:.2f}")
 
 # Tab 4: Audit Log
-with tab4:
+if workflow_page == "📝 Audit Log":
     st.subheader("📝 Human Decision Audit Log")
     st.caption("Persistent audit trail of all governance decisions made across sessions.")
     
@@ -2775,7 +2795,7 @@ with col_bot2:
         """)
 
 # Tab 5: Research Modules Status
-with tab5:
+if workflow_page == "🔬 Research & Validation":
     st.subheader("🔬 Operational Research & Validation Status")
     
     st.markdown("### 🧪 Validation & Testing Center")
@@ -2900,7 +2920,7 @@ with tab5:
         st.info("Registry not available.")
 
 # Tab 6: AI Committee Planner
-with tab6:
+if workflow_page == "🏛️ AI Committee Debate & Planner":
     st.subheader("🏛️ AI Committee Debate & Intervention Planner")
     logs = get_logs()
     if not logs:
@@ -2981,7 +3001,7 @@ with tab6:
                 """, unsafe_allow_html=True)
 
 # Tab 7: Model Performance
-with tab7:
+if workflow_page == "📈 Model Performance":
     st.markdown("### 📈 XGBoost Model Performance Dashboard")
     st.caption("Visual proof that the underlying Machine Learning model is accurately predicting ER wait times and catching dangerous staffing-risk scenarios.")
 
