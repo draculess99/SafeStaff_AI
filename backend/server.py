@@ -326,9 +326,9 @@ def generate_live_debate():
         rejected_candidates = data.get("rejected_candidates", [])
         model_target = data.get("model", "gemini-1.5-flash")
         
-        api_key = os.environ.get("GEMINI_API_KEY")
+        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            return jsonify({"success": False, "error": "GEMINI_API_KEY environment variable not found"}), 400
+            return jsonify({"success": False, "error": "GOOGLE_API_KEY or GEMINI_API_KEY environment variable is not set."}), 500
             
         prompt = f"""
         Hospital Scenario Context:
@@ -355,11 +355,7 @@ def generate_live_debate():
         try:
             import google.generativeai as genai
             
-            # Ensure API key is available
-            api_key = os.environ.get("GOOGLE_API_KEY", "")
-            if not api_key:
-                return jsonify({"success": False, "error": "GOOGLE_API_KEY environment variable is not set."}), 500
-                
+            # Use the same key resolved above.
             genai.configure(api_key=api_key)
             
             model = genai.GenerativeModel(
