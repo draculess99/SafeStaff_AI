@@ -1675,6 +1675,10 @@ if workflow_page == "📋 Roster & Shortage Solver":
                     preset_info["date"] = str(preset_info["date"])
 
             payload = {
+                # Carry the selected roster shift through the solver workflow so
+                # approval can update the intended schedule row. NEW_SHIFT means
+                # approval should create a new shift instead of updating SHIFT_001/2/3.
+                "shift_id": scen.get("shift_id", "NEW_SHIFT"),
                 "department": scen['department'],
                 "shift_type": scen.get('shift_type', 'Morning'),
                 "acuity_level": scen['acuity'],
