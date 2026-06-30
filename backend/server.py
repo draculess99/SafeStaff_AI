@@ -701,6 +701,10 @@ if __name__ == "__main__":
     with open(MODEL_PATH, "rb") as f:
         payload = pickle.load(f)
     xgb_model = payload["model"]
-    app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)
+
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "5000"))
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host=host, port=port, debug=debug, use_reloader=False)
 
 
