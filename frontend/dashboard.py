@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import datetime
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.ui_helpers import (
     get_status_light_mapping,
     get_token_display_text,
@@ -494,43 +495,71 @@ def normalize_records(payload, list_keys=("data", "results", "items", "schedule"
             return [payload]
     return []
 
+def _fetch_records(endpoint, list_keys, timeout=5):
+    """Fetch a read-only endpoint and normalize the response into a list.
+
+    Kept separate from the cached helpers so the dashboard can fetch the common
+    startup payload concurrently on cache misses.
+    """
+    try:
+        response = requests.get(f"{API_BASE_URL}{endpoint}", timeout=timeout)
+        if response.ok:
+            return normalize_records(response.json(), list_keys=list_keys)
+        return []
+    except Exception:
+        return []
+
 @st.cache_data(ttl=120)
+def get_dashboard_bootstrap_data():
+    """Load common dashboard read-only data concurrently.
+
+    On a cold Streamlit cache, the old code fetched nurses, schedule, logs, and
+    audit logs one after another. Over Railway, that stacks latency. This turns
+    four serial network waits into one parallel wait while keeping the public
+    get_* helpers unchanged for the rest of the dashboard.
+    """
+    jobs = {
+        "nurses": ("/api/nurses", ("nurses", "data", "results", "items")),
+        "schedule": ("/api/schedule", ("schedule", "data", "results", "items")),
+        "logs": ("/api/logs", ("logs", "data", "results", "items")),
+        "audit_logs": ("/api/audit_logs", ("audit_logs", "logs", "data", "results", "items")),
+    }
+    results = {key: [] for key in jobs}
+    try:
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_key = {
+                executor.submit(_fetch_records, endpoint, list_keys, 5): key
+                for key, (endpoint, list_keys) in jobs.items()
+            }
+            for future in as_completed(future_to_key):
+                key = future_to_key[future]
+                try:
+                    results[key] = future.result()
+                except Exception:
+                    results[key] = []
+    except Exception:
+        # Fallback to serial fetch if the executor fails for any reason.
+        for key, (endpoint, list_keys) in jobs.items():
+            results[key] = _fetch_records(endpoint, list_keys, 5)
+    return results
+
 def get_nurses():
-    try:
-        response = requests.get(f"{API_BASE_URL}/api/nurses", timeout=5)
-        if response.ok:
-            return normalize_records(response.json(), list_keys=("nurses", "data", "results", "items"))
-        return []
-    except Exception:
-        return []
+    return get_dashboard_bootstrap_data().get("nurses", [])
 
-@st.cache_data(ttl=120)
 def get_schedule():
-    try:
-        response = requests.get(f"{API_BASE_URL}/api/schedule", timeout=5)
-        if response.ok:
-            return normalize_records(response.json(), list_keys=("schedule", "data", "results", "items"))
-        return []
-    except Exception:
-        return []
+    return get_dashboard_bootstrap_data().get("schedule", [])
 
-@st.cache_data(ttl=120)
 def get_logs():
-    try:
-        response = requests.get(f"{API_BASE_URL}/api/logs", timeout=5)
-        if response.ok:
-            return normalize_records(response.json(), list_keys=("logs", "data", "results", "items"))
-        return []
-    except Exception:
-        return []
+    return get_dashboard_bootstrap_data().get("logs", [])
+
+def get_audit_logs():
+    return get_dashboard_bootstrap_data().get("audit_logs", [])
 
 @st.cache_data(ttl=120)
-def get_audit_logs():
+def get_inflow_history():
     try:
-        response = requests.get(f"{API_BASE_URL}/api/audit_logs", timeout=5)
-        if response.ok:
-            return normalize_records(response.json(), list_keys=("audit_logs", "logs", "data", "results", "items"))
-        return []
+        response = requests.get(f"{API_BASE_URL}/api/inflow-history", timeout=5)
+        return response.json() if response.ok else []
     except Exception:
         return []
 
@@ -1113,14 +1142,12 @@ st.markdown("---")
 
 with st.expander("Recent Inflow Memory History", expanded=False):
     st.markdown("##### Recent Inflow Memory History (`database/inflow_memory_history.json`)")
-    try:
-        hist_data = requests.get(f"{API_BASE_URL}/api/inflow-history", timeout=5).json()
-        if hist_data:
-            st.json(hist_data[-5:])
-        else:
-            st.write("No history available.")
-    except Exception:
-        st.write("Error loading history.")
+    st.caption("Loaded from a short cache so this collapsed expander no longer blocks every page interaction.")
+    hist_data = get_inflow_history()
+    if hist_data:
+        st.json(hist_data[-5:])
+    else:
+        st.write("No history available.")
 
 with st.expander("Similar Prior ER Memory Events", expanded=False):
     st.markdown("##### Similar Prior ER Memory Events")
