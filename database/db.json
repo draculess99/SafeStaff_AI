@@ -230,7 +230,7 @@
   "schedule": [
     {
       "id": "SHIFT_001",
-      "date": "2026-06-15",
+      "date": "2026-06-30",
       "shift_type": "Morning",
       "department": "Emergency",
       "assigned_nurses": [
@@ -244,7 +244,7 @@
     },
     {
       "id": "SHIFT_002",
-      "date": "2026-06-15",
+      "date": "2026-06-30",
       "shift_type": "Night",
       "department": "Emergency",
       "assigned_nurses": [
@@ -257,7 +257,7 @@
     },
     {
       "id": "SHIFT_003",
-      "date": "2026-06-16",
+      "date": "2026-07-01",
       "shift_type": "Morning",
       "department": "Emergency",
       "assigned_nurses": [
