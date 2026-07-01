@@ -280,68 +280,90 @@ st.markdown("""
     }
 
     /* Performance workflow selector: compact one-line tab buttons.
-       Keeps lazy rendering: only the selected workflow executes. */
+       UX meaning:
+       - selected tab = solid blue
+       - Roster & Shortage Solver = primary blue outline when inactive
+       - AI Committee = subtle purple outline when inactive
+       - other tabs = neutral dark
+       - hover = small lift, brighter border, no distracting animation */
     div[role="radiogroup"] {
         display: flex !important;
         flex-wrap: nowrap !important;
-        gap: 6px !important;
+        gap: 4px !important;
         align-items: stretch !important;
         margin-bottom: 18px !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
         white-space: nowrap !important;
-        padding-bottom: 4px !important;
+        padding: 2px 2px 6px 2px !important;
         scrollbar-width: thin !important;
     }
+
     div[role="radiogroup"] label {
-        background-color: rgba(30, 41, 59, 0.5) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background-color: rgba(15, 23, 42, 0.88) !important;
+        border: 1px solid rgba(148, 163, 184, 0.22) !important;
         border-radius: 8px !important;
-        padding: 6px 10px !important;
+        padding: 6px 9px !important;
         margin-right: 0 !important;
-        min-height: 36px !important;
+        min-height: 34px !important;
         display: flex !important;
         align-items: center !important;
         flex: 0 0 auto !important;
-        transition: all 0.2s ease-in-out !important;
+        transform: translateY(0) !important;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease !important;
     }
-    /* Make the primary working tab stand out even when it is not selected.
-       This guides users toward the main operational workflow without using red,
-       which is reserved for critical/errors. */
-    div[role="radiogroup"] label:first-of-type {
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(59, 130, 246, 0.82)) !important;
-        border-color: rgba(96, 165, 250, 0.95) !important;
-        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.20), 0 6px 14px rgba(37, 99, 235, 0.20) !important;
+
+    /* Reduce the visible radio-circle footprint so the controls read like tabs. */
+    div[role="radiogroup"] label > div:first-child {
+        transform: scale(0.72) !important;
+        margin-right: 2px !important;
     }
-    div[role="radiogroup"] label:first-of-type p {
-        color: #ffffff !important;
-    }
-    div[role="radiogroup"] label:first-of-type:hover {
-        background: linear-gradient(135deg, rgba(29, 78, 216, 1), rgba(37, 99, 235, 0.96)) !important;
-        border-color: rgba(147, 197, 253, 1) !important;
-        transform: translateY(-1px);
-    }
+
     div[role="radiogroup"] label:hover {
-        background-color: rgba(51, 65, 85, 0.8) !important;
-        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(30, 41, 59, 0.95) !important;
+        border-color: rgba(96, 165, 250, 0.48) !important;
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.35) !important;
+        transform: translateY(-1px) !important;
     }
+
+    /* Primary workflow tab: Roster & Shortage Solver.  Keep it important, but not identical to selected. */
+    div[role="radiogroup"] label:nth-of-type(1):not(:has(input:checked)) {
+        background-color: rgba(30, 64, 175, 0.16) !important;
+        border-color: rgba(59, 130, 246, 0.72) !important;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.18), 0 0 12px rgba(37, 99, 235, 0.18) !important;
+    }
+    div[role="radiogroup"] label:nth-of-type(1):not(:has(input:checked)) p {
+        color: #bfdbfe !important;
+        font-weight: 800 !important;
+    }
+
+    /* Agentic AI feature tab: subtle purple accent when inactive. */
+    div[role="radiogroup"] label:nth-of-type(6):not(:has(input:checked)) {
+        border-color: rgba(168, 85, 247, 0.42) !important;
+        background-color: rgba(88, 28, 135, 0.10) !important;
+    }
+
+    /* The selected/current tab is the only solid blue tab. */
     div[role="radiogroup"] label:has(input:checked) {
         color: #ffffff !important;
-        background-color: #2563eb !important;
-        border-color: #3b82f6 !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+        border-color: #60a5fa !important;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.34), 0 0 0 1px rgba(147, 197, 253, 0.22) inset !important;
+        transform: translateY(-1px) !important;
     }
-    div[role="radiogroup"] label:first-of-type:has(input:checked) {
-        background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
-        border-color: #93c5fd !important;
-        box-shadow: 0 0 0 1px rgba(147, 197, 253, 0.35), 0 8px 18px rgba(37, 99, 235, 0.28) !important;
-    }
+
     div[role="radiogroup"] label p {
-        font-size: 0.88rem !important;
+        font-size: 0.80rem !important;
+        line-height: 1.05rem !important;
         font-weight: 700 !important;
-        color: #f3f4f6 !important;
+        color: #e5e7eb !important;
         margin: 0 !important;
         white-space: nowrap !important;
+    }
+
+    div[role="radiogroup"] label:has(input:checked) p {
+        color: #ffffff !important;
+        font-weight: 800 !important;
     }
     
     .main .block-container {
