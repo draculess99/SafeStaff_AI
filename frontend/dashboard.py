@@ -1877,17 +1877,60 @@ if workflow_page == "📋 Roster & Shortage Solver":
 
     st.subheader("👩⚕️ Nurse Database Registry")
     nurses = normalize_records(get_nurses(), list_keys=("nurses", "data", "results", "items"))
+
+    # Keep the main workflow compact: show a registry summary first, then place the full
+    # nurse table and add-nurse form inside an expander.
     if nurses:
-        nurses_df = pd.DataFrame.from_records(nurses)
-        expected_cols = ["id", "name", "certifications", "weekly_hours", "base_rate", "circadian_preference", "distance_miles"]
-        for col in expected_cols:
-            if col not in nurses_df.columns:
-                nurses_df[col] = ""
-        nurses_df = nurses_df[expected_cols]
-        st.markdown(render_styled_table(nurses_df), unsafe_allow_html=True)
+        def _cert_list(nurse):
+            certs = nurse.get("certifications", [])
+            if isinstance(certs, str):
+                return [c.strip() for c in certs.replace(";", ",").split(",") if c.strip()]
+            if isinstance(certs, (list, tuple, set)):
+                return [str(c).strip() for c in certs if str(c).strip()]
+            return []
+
+        total_nurses = len(nurses)
+        emergency_nurses = sum(1 for n in nurses if any(c.lower() == "emergency" for c in _cert_list(n)))
+        icu_nurses = sum(1 for n in nurses if any(c.lower() == "icu" for c in _cert_list(n)))
+        peds_nurses = sum(1 for n in nurses if any(c.lower() == "pediatrics" for c in _cert_list(n)))
+        fatigue_watch = sum(1 for n in nurses if int(float(n.get("weekly_hours", 0) or 0)) >= 40)
+        avg_hours = sum(float(n.get("weekly_hours", 0) or 0) for n in nurses) / max(total_nurses, 1)
+
+        st.markdown(
+            f"""
+            <div class="glass-card" style="border-left: 4px solid #60a5fa; background: rgba(15, 23, 42, 0.72); margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <div>
+                        <div style="color: #93c5fd; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.78rem; font-weight: 800;">Nurse registry summary</div>
+                        <div style="color: #ffffff; font-size: 1.02rem; font-weight: 750; margin-top: 2px;">{total_nurses} nurses loaded · fatigue and weekly-hour constraints tracked</div>
+                    </div>
+                    <div style="color: #cbd5e1; font-size: 0.9rem; text-align: right;">
+                        Emergency: <strong style="color:#bfdbfe;">{emergency_nurses}</strong> &nbsp;|&nbsp;
+                        ICU: <strong style="color:#bfdbfe;">{icu_nurses}</strong> &nbsp;|&nbsp;
+                        Pediatrics: <strong style="color:#bfdbfe;">{peds_nurses}</strong><br/>
+                        Avg weekly hours: <strong style="color:#e0f2fe;">{avg_hours:.1f}</strong> · Fatigue watch: <strong style="color:#fbbf24;">{fatigue_watch}</strong>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
         st.info("Nurse database is empty.")
-    with st.expander("➕ Add Custom Nurse to Registry"):
+
+    with st.expander("👩‍⚕️ View Nurse Database Registry & Add Custom Nurse", expanded=False):
+        if nurses:
+            nurses_df = pd.DataFrame.from_records(nurses)
+            expected_cols = ["id", "name", "certifications", "weekly_hours", "base_rate", "circadian_preference", "distance_miles"]
+            for col in expected_cols:
+                if col not in nurses_df.columns:
+                    nurses_df[col] = ""
+            nurses_df = nurses_df[expected_cols]
+            st.markdown(render_styled_table(nurses_df), unsafe_allow_html=True)
+        else:
+            st.info("No nurse rows available yet. Add a custom nurse below or restore demo nurses and shift schedule from the sidebar.")
+
+        st.markdown("#### ➕ Add Custom Nurse to Registry")
         with st.form("add_nurse_form", clear_on_submit=True):
             new_name = st.text_input("Name")
             new_certs = st.multiselect("Certifications", ["Emergency", "ICU", "Pediatrics"])
