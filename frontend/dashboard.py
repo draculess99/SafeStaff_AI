@@ -305,6 +305,22 @@ st.markdown("""
         flex: 0 0 auto !important;
         transition: all 0.2s ease-in-out !important;
     }
+    /* Make the primary working tab stand out even when it is not selected.
+       This guides users toward the main operational workflow without using red,
+       which is reserved for critical/errors. */
+    div[role="radiogroup"] label:first-of-type {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(59, 130, 246, 0.82)) !important;
+        border-color: rgba(96, 165, 250, 0.95) !important;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.20), 0 6px 14px rgba(37, 99, 235, 0.20) !important;
+    }
+    div[role="radiogroup"] label:first-of-type p {
+        color: #ffffff !important;
+    }
+    div[role="radiogroup"] label:first-of-type:hover {
+        background: linear-gradient(135deg, rgba(29, 78, 216, 1), rgba(37, 99, 235, 0.96)) !important;
+        border-color: rgba(147, 197, 253, 1) !important;
+        transform: translateY(-1px);
+    }
     div[role="radiogroup"] label:hover {
         background-color: rgba(51, 65, 85, 0.8) !important;
         border-color: rgba(255, 255, 255, 0.2) !important;
@@ -314,6 +330,11 @@ st.markdown("""
         background-color: #2563eb !important;
         border-color: #3b82f6 !important;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+    div[role="radiogroup"] label:first-of-type:has(input:checked) {
+        background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
+        border-color: #93c5fd !important;
+        box-shadow: 0 0 0 1px rgba(147, 197, 253, 0.35), 0 8px 18px rgba(37, 99, 235, 0.28) !important;
     }
     div[role="radiogroup"] label p {
         font-size: 0.88rem !important;
