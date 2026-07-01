@@ -1282,20 +1282,21 @@ debate_icon = "🟢" if pending_log else "⚪"
 curr_risk = st.session_state.get("evidence", {}).get("adjusted_operational_risk", "Normal")
 status_info = get_status_light_mapping(curr_risk)
 
-# Operational pressure load indicator (sidebar)
+# Operational pressure engine status indicator (sidebar)
 selected_demo_preset = st.session_state.get("demo_select", "Select a Demo Scenario...")
-pressure_inputs_loaded = bool(selected_demo_preset and selected_demo_preset != "Select a Demo Scenario...")
-pressure_label = "LOADED" if pressure_inputs_loaded else "CUSTOM"
-pressure_color = "#22c55e" if pressure_inputs_loaded else "#38bdf8"
-pressure_bg = "rgba(34, 197, 94, 0.10)" if pressure_inputs_loaded else "rgba(56, 189, 248, 0.10)"
-pressure_border = "#22c55e" if pressure_inputs_loaded else "#38bdf8"
-pressure_source = selected_demo_preset if pressure_inputs_loaded else "Manual shift inputs"
-pressure_detail = "Demo preset overrides active" if pressure_inputs_loaded else "Using current sliders and form values"
+pressure_preset_loaded = bool(selected_demo_preset and selected_demo_preset != "Select a Demo Scenario...")
+
+pressure_label = "PRESET LOADED" if pressure_preset_loaded else "READY"
+pressure_color = "#22c55e" if pressure_preset_loaded else "#38bdf8"
+pressure_bg = "rgba(34, 197, 94, 0.10)" if pressure_preset_loaded else "rgba(56, 189, 248, 0.10)"
+pressure_border = "#22c55e" if pressure_preset_loaded else "#38bdf8"
+pressure_detail = selected_demo_preset if pressure_preset_loaded else "Baseline pressure inputs loaded"
+pressure_source = "Recommendation adjustment enabled"
 
 st.sidebar.markdown(f"""
 <div style="text-align: center; margin-bottom: 14px;">
-    <div style="background: {pressure_bg}; border: 1.5px solid {pressure_border}; border-radius: 8px; padding: 10px 8px; box-shadow: 0 0 12px rgba(34,197,94,0.10);">
-        <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #cbd5e1; font-weight: 800; margin-bottom: 4px;">Operational Pressure Inputs</div>
+    <div style="background: {pressure_bg}; border: 1.5px solid {pressure_border}; border-radius: 8px; padding: 10px 8px; box-shadow: 0 0 12px rgba(56,189,248,0.12);">
+        <div style="font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.08em; color: #cbd5e1; font-weight: 800; margin-bottom: 4px;">Operational Pressure Engine</div>
         <div style="font-size: 1.02rem; font-weight: 900; color: {pressure_color};">● {pressure_label}</div>
         <div style="font-size: 0.78rem; color: #e5e7eb; font-weight: 700; margin-top: 4px; line-height: 1.25;">{pressure_detail}</div>
         <div style="font-size: 0.70rem; color: #94a3b8; font-weight: 600; margin-top: 4px; line-height: 1.25;">{pressure_source}</div>
