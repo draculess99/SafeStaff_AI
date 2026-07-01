@@ -348,6 +348,12 @@ def generate_live_debate():
         rec_nurses = data.get("rec_nurses", [])
         rejected_candidates = data.get("rejected_candidates", [])
         model_target = data.get("model", "gemini-1.5-flash")
+        # Keep the backend resilient if the frontend or saved state sends an
+        # unsupported/experimental model label. Unsupported model names cause
+        # Gemini calls to fail, which leaves token usage at zero.
+        supported_models = {"gemini-1.5-flash", "gemini-1.5-pro"}
+        if model_target not in supported_models:
+            model_target = "gemini-1.5-flash"
         
         api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
         if not api_key:
@@ -434,10 +440,11 @@ def generate_live_debate():
             "prompt_tokens": pt,
             "response_tokens": rt,
             "total_tokens": tt,
-            "estimated_api_cost": (pt * 0.000000075) + (rt * 0.0000003)
+            "estimated_api_cost": (pt * 0.000000075) + (rt * 0.0000003),
+            "model_used": model_target
         }
         
-        return jsonify({"success": True, "debate": debate})
+        return jsonify({"success": True, "debate": debate, "model_used": model_target})
         
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
