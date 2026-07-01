@@ -1947,148 +1947,151 @@ if workflow_page == "📋 Roster & Shortage Solver":
         # Additional Nurse Count Breakdown
         evidence = st.session_state.get("evidence", {})
         if evidence:
-            st.markdown("<div style='background: rgba(30, 41, 59, 0.4); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
-            st.markdown("##### 🛡️ Additional Nurse Count Breakdown")
+            with st.expander("🛡️ Staffing need breakdown and operational rationale", expanded=True):
+                st.markdown("<div style='background: rgba(30, 41, 59, 0.4); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 10px; margin-bottom: 10px;'>", unsafe_allow_html=True)
+                st.markdown("##### 🛡️ Additional Nurse Count Breakdown")
             
-            gap = round(pred - thresh, 1)
-            st.write(f"- **Predicted wait time**: `{pred:.1f} mins`")
-            st.write(f"- **Safety threshold**: `{thresh} mins`")
-            st.write(f"- **Wait-time gap**: `{gap} mins`")
-            st.write(f"- **Base nurses from wait-time gap**: `{evidence.get('base_nurses_from_wait_time', 0)}`")
-            st.write(f"- **Operational pressure nurse increments**: `{evidence.get('operational_pressure_nurse_increments', 0)}`")
-            st.write(f"- **Final additional nurses recommended**: `{evidence.get('final_additional_nurses_needed', 0)}`")
+                gap = round(pred - thresh, 1)
+                st.write(f"- **Predicted wait time**: `{pred:.1f} mins`")
+                st.write(f"- **Safety threshold**: `{thresh} mins`")
+                st.write(f"- **Wait-time gap**: `{gap} mins`")
+                st.write(f"- **Base nurses from wait-time gap**: `{evidence.get('base_nurses_from_wait_time', 0)}`")
+                st.write(f"- **Operational pressure nurse increments**: `{evidence.get('operational_pressure_nurse_increments', 0)}`")
+                st.write(f"- **Final additional nurses recommended**: `{evidence.get('final_additional_nurses_needed', 0)}`")
             
-            reasons = evidence.get("nurse_increment_reasons", [])
-            if reasons:
-                st.write("**Increment reasons**:")
-                for r in reasons:
-                    st.write(f"  * {r}")
-            else:
-                st.write("**Increment reasons**: None")
+                reasons = evidence.get("nurse_increment_reasons", [])
+                if reasons:
+                    st.write("**Increment reasons**:")
+                    for r in reasons:
+                        st.write(f"  * {r}")
+                else:
+                    st.write("**Increment reasons**: None")
                 
-            if evidence.get("boarding_pressure") == "Critical" or evidence.get("selected_demo_preset") == "4. Boarding Gridlock / No Inpatient Beds":
-                st.warning("⚠️ **BED-FLOW ESCALATION REQUIRED**: Critical boarding pressure detected. Inpatient bed coordination team must be notified immediately.")
+                if evidence.get("boarding_pressure") == "Critical" or evidence.get("selected_demo_preset") == "4. Boarding Gridlock / No Inpatient Beds":
+                    st.warning("⚠️ **BED-FLOW ESCALATION REQUIRED**: Critical boarding pressure detected. Inpatient bed coordination team must be notified immediately.")
                 
-            st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
             
-        # Local Prediction Drivers Main Section
-        st.markdown("<div style='background: rgba(30, 41, 59, 0.3); padding: 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 15px;'>", unsafe_allow_html=True)
-        st.markdown("##### 📊 XGBoost Local Prediction Drivers")
-        st.caption("This chart displays how individual XGBoost input features influence the predicted wait time up or down relative to the model baseline.")
+        with st.expander("📊 View XGBoost local prediction drivers", expanded=False):
+            # Local Prediction Drivers Main Section
+            st.markdown("<div style='background: rgba(30, 41, 59, 0.3); padding: 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 15px;'>", unsafe_allow_html=True)
+            st.markdown("##### 📊 XGBoost Local Prediction Drivers")
+            st.caption("This chart displays how individual XGBoost input features influence the predicted wait time up or down relative to the model baseline.")
         
-        scen = st.session_state.xg_inputs
-        month = scen["shift_date"].month
-        day = scen["shift_date"].weekday()
-        hour_map = {"Morning": 8, "Evening": 16, "Night": 22}
-        hour = hour_map.get(scen["shift_type"], 12)
+            scen = st.session_state.xg_inputs
+            month = scen["shift_date"].month
+            day = scen["shift_date"].weekday()
+            hour_map = {"Morning": 8, "Evening": 16, "Night": 22}
+            hour = hour_map.get(scen["shift_type"], 12)
         
-        # Calculate effective ratio
-        weather_surge = 0.30 if scen.get("env_weather") == "Severe Blizzard / Ice Storm" else (0.15 if scen.get("env_weather") == "Severe Heatwave" else 0.0)
-        outbreak_surge = (scen.get("env_flu", 1) - 1) * 0.10
-        env_multiplier = round(1.0 + weather_surge + outbreak_surge, 2)
-        effective_ratio = round(st.session_state.get("scen_ratio", 0.20) / env_multiplier, 3)
+            # Calculate effective ratio
+            weather_surge = 0.30 if scen.get("env_weather") == "Severe Blizzard / Ice Storm" else (0.15 if scen.get("env_weather") == "Severe Heatwave" else 0.0)
+            outbreak_surge = (scen.get("env_flu", 1) - 1) * 0.10
+            env_multiplier = round(1.0 + weather_surge + outbreak_surge, 2)
+            effective_ratio = round(st.session_state.get("scen_ratio", 0.20) / env_multiplier, 3)
 
-        drivers = calculate_local_drivers(
-            beds=st.session_state.get("scen_beds", 200),
-            month=month,
-            day=day,
-            hour=hour,
-            acuity=st.session_state.get("scen_acuity", 3),
-            ratio=effective_ratio,
-            spec=st.session_state.get("scen_spec", 1)
-        )
-        
-        # Sort and take top 5
-        sorted_drivers = sorted(drivers.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
-        driver_df = pd.DataFrame(sorted_drivers, columns=["Driver", "Contribution"])
-        
-        import altair as alt
-        chart = alt.Chart(driver_df).mark_bar().encode(
-            x=alt.X('Contribution:Q', title='Contribution to Wait Time (mins)'),
-            y=alt.Y('Driver:N', sort='-x', title='', axis=alt.Axis(labelLimit=300)),
-            color=alt.condition(
-                alt.datum.Contribution > 0,
-                alt.value("#ef4444"), # Red for positive drivers (increases wait time)
-                alt.value("#10b981")  # Green for negative drivers (reduces wait time)
-            )
-        ).properties(height=200)
-        st.altair_chart(chart, use_container_width=True)
-        st.markdown("""<div style="background-color: #102A43; border: 1px solid #2563EB; border-radius: 10px; padding: 16px 18px; margin-top: 14px; margin-bottom: 20px; color: #F8FAFC; line-height: 1.6; font-size: 0.95rem;"><p style="margin-top: 0; color: #FFFFFF;"><strong>Interpretation:</strong> This chart explains the local XGBoost wait-time prediction for the current scenario. Red bars push the predicted wait time higher, while green bars reduce the predicted wait time relative to the model baseline.</p><p style="color: #FFFFFF;">The chart explains why XGBoost predicted the current ER wait time using model input features such as nurse-to-patient ratio, specialist availability, weekend influx, seasonal/month surge, and visit-hour peak effects.</p><p style="color: #FFFFFF;">If the predicted wait time remains below the safety threshold, the XGBoost wait-time gap contributes 0 additional nurses. Any final staffing increase after that is caused by post-prediction operational pressure rules, such as Critical adjusted operational risk, Critical arrival surge pressure, boarding pressure, ESI pressure, or fatigue pressure.</p><p style="margin-bottom: 0; color: #FFFFFF;">This separation makes clear that the XGBoost chart explains the wait-time forecast, while the staffing solver explains the final nurse recommendation.</p></div>""", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-            
-        # --- NEW: Clinical Risk Explanation ---
-        st.markdown("##### 🩺 Clinical Risk Explanation")
-        st.write("Based on the current inputs, the following operational factors are driving the predicted staffing risk:")
-        risk_bullets = []
-        hour = hour_map.get(scen.get("shift_type"), 12)
-        if hour in range(16, 23):
-            risk_bullets.append("- **Peak-hour pressure detected** (Evening volume surge).")
-        if scen.get("shift_date") and scen["shift_date"].month in [12, 1, 2] and scen["shift_date"].weekday() in [5, 6]:
-            risk_bullets.append("- **Winter weekend surge pattern detected**.")
-        elif scen.get("shift_date") and scen["shift_date"].month in [12, 1, 2]:
-            risk_bullets.append("- **Winter surge pattern detected**.")
-        elif scen.get("shift_date") and scen["shift_date"].weekday() in [5, 6]:
-            risk_bullets.append("- **Weekend pattern detected**.")
-            
-        if effective_ratio < 0.18:
-            risk_bullets.append("- **Poor nurse-to-patient ratio** increases staffing pressure.")
-        if st.session_state.get("scen_spec", 1) == 0:
-            risk_bullets.append("- **Specialist unavailable**, increasing operational bottleneck risk.")
-        if scen.get("acuity", 3) < 3: # 1 or 2 is high urgency
-            risk_bullets.append("- **Urgency/acuity proxy is elevated**.")
-        if st.session_state.get("scen_beds", 200) < 150:
-            risk_bullets.append("- **Small facility size** increases capacity pressure.")
-            
-        if not risk_bullets:
-            adj_risk = evidence.get("adjusted_operational_risk", "Normal")
-            if adj_risk in ["High", "Critical"]:
-                risk_bullets.append("- Although the XGBoost wait-time forecast may be below the safety threshold, operational pressure signals indicate significant strain and require staffing escalation.")
-            else:
-                risk_bullets.append("- Current operational pressure signals do not indicate severe strain beyond the XGBoost wait-time forecast.")
-            
-        for bullet in risk_bullets:
-            st.write(bullet)
-            
-        # --- NEW: What-If Staffing Simulator ---
-        st.markdown("##### 🔬 What-If Staffing Simulator")
-        st.write("This simulator shows how additional nurse coverage may reduce predicted staffing-risk pressure. It is a prototype decision-support estimate, not a clinical guarantee.")
-        
-        sim_data = []
-        base_ratio = st.session_state.get("scen_ratio", 0.20)
-        beds = st.session_state.get("scen_beds", 200)
-        
-        def simulate_wait(nurses_added):
-            new_ratio = base_ratio + (nurses_added / max(beds, 1))
-            new_eff_ratio = round(new_ratio / env_multiplier, 3)
-            return predict_wait_time(
-                facility_size_beds=beds,
+            drivers = calculate_local_drivers(
+                beds=st.session_state.get("scen_beds", 200),
                 month=month,
-                day_of_week=day,
-                visithour=hour,
-                urgency_level=scen.get("acuity", 3),
-                nurse_to_patient_ratio=new_eff_ratio,
-                specialist_availability=st.session_state.get("scen_spec", 1)
+                day=day,
+                hour=hour,
+                acuity=st.session_state.get("scen_acuity", 3),
+                ratio=effective_ratio,
+                spec=st.session_state.get("scen_spec", 1)
             )
-            
-        def get_risk_label(diff):
-            if diff <= 0: return "🟢 Optimal"
-            elif diff <= 30: return "🟡 Low Risk"
-            elif diff <= 60: return "🟠 Moderate"
-            else: return "🔴 High/Critical"
-
-        base_diff = pred - thresh
-        base_risk = get_risk_label(base_diff)
-        sim_data.append({"Scenario": "Current staffing", "Predicted Wait Time": f"{pred:.1f} min", "Staffing Risk": base_risk, "Improvement": "-"})
         
-        for add_n in [1, 2, 3]:
-            sim_pred = simulate_wait(add_n)
-            sim_diff = sim_pred - thresh
-            sim_risk = get_risk_label(sim_diff)
-            imp = max(0, pred - sim_pred)
-            sim_data.append({"Scenario": f"Add {add_n} nurse{'s' if add_n>1 else ''}", "Predicted Wait Time": f"{sim_pred:.1f} min", "Staffing Risk": sim_risk, "Improvement": f"-{imp:.1f} min"})
+            # Sort and take top 5
+            sorted_drivers = sorted(drivers.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
+            driver_df = pd.DataFrame(sorted_drivers, columns=["Driver", "Contribution"])
+        
+            import altair as alt
+            chart = alt.Chart(driver_df).mark_bar().encode(
+                x=alt.X('Contribution:Q', title='Contribution to Wait Time (mins)'),
+                y=alt.Y('Driver:N', sort='-x', title='', axis=alt.Axis(labelLimit=300)),
+                color=alt.condition(
+                    alt.datum.Contribution > 0,
+                    alt.value("#ef4444"), # Red for positive drivers (increases wait time)
+                    alt.value("#10b981")  # Green for negative drivers (reduces wait time)
+                )
+            ).properties(height=200)
+            st.altair_chart(chart, use_container_width=True)
+            st.markdown("""<div style="background-color: #102A43; border: 1px solid #2563EB; border-radius: 10px; padding: 16px 18px; margin-top: 14px; margin-bottom: 20px; color: #F8FAFC; line-height: 1.6; font-size: 0.95rem;"><p style="margin-top: 0; color: #FFFFFF;"><strong>Interpretation:</strong> This chart explains the local XGBoost wait-time prediction for the current scenario. Red bars push the predicted wait time higher, while green bars reduce the predicted wait time relative to the model baseline.</p><p style="color: #FFFFFF;">The chart explains why XGBoost predicted the current ER wait time using model input features such as nurse-to-patient ratio, specialist availability, weekend influx, seasonal/month surge, and visit-hour peak effects.</p><p style="color: #FFFFFF;">If the predicted wait time remains below the safety threshold, the XGBoost wait-time gap contributes 0 additional nurses. Any final staffing increase after that is caused by post-prediction operational pressure rules, such as Critical adjusted operational risk, Critical arrival surge pressure, boarding pressure, ESI pressure, or fatigue pressure.</p><p style="margin-bottom: 0; color: #FFFFFF;">This separation makes clear that the XGBoost chart explains the wait-time forecast, while the staffing solver explains the final nurse recommendation.</p></div>""", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
             
-        st.table(pd.DataFrame(sim_data))
+        with st.expander("🩺 View clinical risk explanation and what-if staffing simulator", expanded=False):
+            # --- NEW: Clinical Risk Explanation ---
+            st.markdown("##### 🩺 Clinical Risk Explanation")
+            st.write("Based on the current inputs, the following operational factors are driving the predicted staffing risk:")
+            risk_bullets = []
+            hour = hour_map.get(scen.get("shift_type"), 12)
+            if hour in range(16, 23):
+                risk_bullets.append("- **Peak-hour pressure detected** (Evening volume surge).")
+            if scen.get("shift_date") and scen["shift_date"].month in [12, 1, 2] and scen["shift_date"].weekday() in [5, 6]:
+                risk_bullets.append("- **Winter weekend surge pattern detected**.")
+            elif scen.get("shift_date") and scen["shift_date"].month in [12, 1, 2]:
+                risk_bullets.append("- **Winter surge pattern detected**.")
+            elif scen.get("shift_date") and scen["shift_date"].weekday() in [5, 6]:
+                risk_bullets.append("- **Weekend pattern detected**.")
+            
+            if effective_ratio < 0.18:
+                risk_bullets.append("- **Poor nurse-to-patient ratio** increases staffing pressure.")
+            if st.session_state.get("scen_spec", 1) == 0:
+                risk_bullets.append("- **Specialist unavailable**, increasing operational bottleneck risk.")
+            if scen.get("acuity", 3) < 3: # 1 or 2 is high urgency
+                risk_bullets.append("- **Urgency/acuity proxy is elevated**.")
+            if st.session_state.get("scen_beds", 200) < 150:
+                risk_bullets.append("- **Small facility size** increases capacity pressure.")
+            
+            if not risk_bullets:
+                adj_risk = evidence.get("adjusted_operational_risk", "Normal")
+                if adj_risk in ["High", "Critical"]:
+                    risk_bullets.append("- Although the XGBoost wait-time forecast may be below the safety threshold, operational pressure signals indicate significant strain and require staffing escalation.")
+                else:
+                    risk_bullets.append("- Current operational pressure signals do not indicate severe strain beyond the XGBoost wait-time forecast.")
+            
+            for bullet in risk_bullets:
+                st.write(bullet)
+            
+            # --- NEW: What-If Staffing Simulator ---
+            st.markdown("##### 🔬 What-If Staffing Simulator")
+            st.write("This simulator shows how additional nurse coverage may reduce predicted staffing-risk pressure. It is a prototype decision-support estimate, not a clinical guarantee.")
+        
+            sim_data = []
+            base_ratio = st.session_state.get("scen_ratio", 0.20)
+            beds = st.session_state.get("scen_beds", 200)
+        
+            def simulate_wait(nurses_added):
+                new_ratio = base_ratio + (nurses_added / max(beds, 1))
+                new_eff_ratio = round(new_ratio / env_multiplier, 3)
+                return predict_wait_time(
+                    facility_size_beds=beds,
+                    month=month,
+                    day_of_week=day,
+                    visithour=hour,
+                    urgency_level=scen.get("acuity", 3),
+                    nurse_to_patient_ratio=new_eff_ratio,
+                    specialist_availability=st.session_state.get("scen_spec", 1)
+                )
+            
+            def get_risk_label(diff):
+                if diff <= 0: return "🟢 Optimal"
+                elif diff <= 30: return "🟡 Low Risk"
+                elif diff <= 60: return "🟠 Moderate"
+                else: return "🔴 High/Critical"
+
+            base_diff = pred - thresh
+            base_risk = get_risk_label(base_diff)
+            sim_data.append({"Scenario": "Current staffing", "Predicted Wait Time": f"{pred:.1f} min", "Staffing Risk": base_risk, "Improvement": "-"})
+        
+            for add_n in [1, 2, 3]:
+                sim_pred = simulate_wait(add_n)
+                sim_diff = sim_pred - thresh
+                sim_risk = get_risk_label(sim_diff)
+                imp = max(0, pred - sim_pred)
+                sim_data.append({"Scenario": f"Add {add_n} nurse{'s' if add_n>1 else ''}", "Predicted Wait Time": f"{sim_pred:.1f} min", "Staffing Risk": sim_risk, "Improvement": f"-{imp:.1f} min"})
+            
+            st.table(pd.DataFrame(sim_data))
 
     st.markdown("</div>", unsafe_allow_html=True)
     
@@ -2356,17 +2359,18 @@ if workflow_page == "📋 Roster & Shortage Solver":
             research_adjustment_result = f"No numeric staffing change was applied. The research modules confirmed that the original {base_n}-nurse recommendation remains appropriate under the current operational-risk conditions."
             operational_factors_label = "Operational factors supporting this recommendation:"
         
-        st.markdown(f"""
-        <div class="glass-card" style="border-left: 5px solid #818cf8; background: rgba(17, 25, 40, 0.7);">
-            <h4 style="margin-top:0; color:#818cf8; font-weight:700;">🛡️ Research-Adjusted Staffing Rationale</h4>
-            <p style="margin-bottom:8px; font-size:1.05em;">• <strong>Base XGBoost staffing need:</strong> {base_n} nurse{'s' if base_n != 1 else ''}</p>
-            <p style="margin-bottom:8px; font-size:1.05em;">• <strong>Research-adjusted staffing need:</strong> {adj_n} nurse{'s' if adj_n != 1 else ''}</p>
-            <p style="margin-bottom:8px; font-size:1.05em;">• <strong>{change_label_inline}:</strong> {reasons_str}</p>
-            <p style="margin-bottom:8px; font-size:1.05em;">• <strong>Final Recommended Nurse Count:</strong> {adj_n} nurse{'s' if adj_n != 1 else ''}</p>
-            <p style="margin-bottom:0; font-size:1.05em;">• <strong>Roster Cost Impact:</strong> ${cost_after:.2f} (Base forecast: ${cost_before:.2f}, Difference: +${cost_diff:.2f})</p>
-            {f'<p style="margin-top:8px; font-size:0.95em; color:#94a3b8; font-style:italic;">Note: {note}</p>' if note else ''}
-        </div>
-        """, unsafe_allow_html=True)
+        with st.expander("🛡️ Staffing resolution rationale", expanded=True):
+            st.markdown(f"""
+            <div class="glass-card" style="border-left: 5px solid #818cf8; background: rgba(17, 25, 40, 0.7);">
+                <h4 style="margin-top:0; color:#818cf8; font-weight:700;">🛡️ Research-Adjusted Staffing Rationale</h4>
+                <p style="margin-bottom:8px; font-size:1.05em;">• <strong>Base XGBoost staffing need:</strong> {base_n} nurse{'s' if base_n != 1 else ''}</p>
+                <p style="margin-bottom:8px; font-size:1.05em;">• <strong>Research-adjusted staffing need:</strong> {adj_n} nurse{'s' if adj_n != 1 else ''}</p>
+                <p style="margin-bottom:8px; font-size:1.05em;">• <strong>{change_label_inline}:</strong> {reasons_str}</p>
+                <p style="margin-bottom:8px; font-size:1.05em;">• <strong>Final Recommended Nurse Count:</strong> {adj_n} nurse{'s' if adj_n != 1 else ''}</p>
+                <p style="margin-bottom:0; font-size:1.05em;">• <strong>Roster Cost Impact:</strong> ${cost_after:.2f} (Base forecast: ${cost_before:.2f}, Difference: +${cost_diff:.2f})</p>
+                {f'<p style="margin-top:8px; font-size:0.95em; color:#94a3b8; font-style:italic;">Note: {note}</p>' if note else ''}
+            </div>
+            """, unsafe_allow_html=True)
 
         # 3. Why the Recommendation Changed
         if log_data.get("operational_signal_impact_summary"):
@@ -2646,40 +2650,42 @@ if workflow_page == "📋 Roster & Shortage Solver":
             st.metric("Patient Safety Score", f"{log_data['risk_factors']['patient_safety_score']:.1f}/100")
             st.metric("Fatigue Index", f"{log_data['risk_factors']['fatigue_index']:.1f}%")
             
-        # Token usage audit display
-        st.markdown("---")
-        st.markdown("##### 🪙 LLM Token Usage Audit")
+        with st.expander("🪙 View LLM token usage audit", expanded=False):
+            # Token usage audit display
+            st.markdown("---")
+            st.markdown("##### 🪙 LLM Token Usage Audit")
         
-        solver_costs = log_data.get("costs", {})
-        debate_costs = st.session_state.get("agent_debate", {})
+            solver_costs = log_data.get("costs", {})
+            debate_costs = st.session_state.get("agent_debate", {})
         
-        total_llm_calls = solver_costs.get("llm_calls", 0) + debate_costs.get("llm_calls", 0)
-        total_prompt_t = solver_costs.get("prompt_tokens", 0) + debate_costs.get("prompt_tokens", 0)
-        total_resp_t = solver_costs.get("response_tokens", 0) + debate_costs.get("response_tokens", 0)
-        total_token_usage = solver_costs.get("total_tokens", 0) + debate_costs.get("total_tokens", 0)
-        total_api_cost = solver_costs.get("estimated_api_cost", 0.0) + debate_costs.get("estimated_api_cost", 0.0)
+            total_llm_calls = solver_costs.get("llm_calls", 0) + debate_costs.get("llm_calls", 0)
+            total_prompt_t = solver_costs.get("prompt_tokens", 0) + debate_costs.get("prompt_tokens", 0)
+            total_resp_t = solver_costs.get("response_tokens", 0) + debate_costs.get("response_tokens", 0)
+            total_token_usage = solver_costs.get("total_tokens", 0) + debate_costs.get("total_tokens", 0)
+            total_api_cost = solver_costs.get("estimated_api_cost", 0.0) + debate_costs.get("estimated_api_cost", 0.0)
         
-        # Check if tracker is disconnected
-        is_unavailable = (solver_costs.get("total_tokens") == -1) or (debate_costs.get("total_tokens") == -1)
+            # Check if tracker is disconnected
+            is_unavailable = (solver_costs.get("total_tokens") == -1) or (debate_costs.get("total_tokens") == -1)
         
-        if is_unavailable:
-            st.warning("Token usage unavailable — tracker not connected")
-        elif total_llm_calls == 0:
-            st.markdown("""<div style="background-color: #102A43; border: 1px solid #2563EB; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; color: #F8FAFC; line-height: 1.6; font-size: 0.95rem;"><p style="margin-top: 0; margin-bottom: 0; color: #FFFFFF;">Token usage: 0 tokens - Low-token local rule mode</p></div>""", unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            - **LLM Calls Made**: {total_llm_calls}
-            - **Prompt Tokens**: {total_prompt_t}
-            - **Response Tokens**: {total_resp_t}
-            - **Total Tokens**: {total_token_usage}
-            - **Estimated API Cost**: ${total_api_cost:.5f}
-            """)
+            if is_unavailable:
+                st.warning("Token usage unavailable — tracker not connected")
+            elif total_llm_calls == 0:
+                st.markdown("""<div style="background-color: #102A43; border: 1px solid #2563EB; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; color: #F8FAFC; line-height: 1.6; font-size: 0.95rem;"><p style="margin-top: 0; margin-bottom: 0; color: #FFFFFF;">Token usage: 0 tokens - Low-token local rule mode</p></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                - **LLM Calls Made**: {total_llm_calls}
+                - **Prompt Tokens**: {total_prompt_t}
+                - **Response Tokens**: {total_resp_t}
+                - **Total Tokens**: {total_token_usage}
+                - **Estimated API Cost**: ${total_api_cost:.5f}
+                """)
         
-        st.markdown("#### 🗣️ Explainability Report:")
-        st.markdown(log_data["explainability_narrative"])
+        with st.expander("🗣️ View full explainability report and evidence packet", expanded=False):
+            st.markdown("#### 🗣️ Explainability Report:")
+            st.markdown(log_data["explainability_narrative"])
         
-        with st.expander("Debug: LLM Evidence Packet"):
-            st.json(log_data.get("committee_evidence", {}))
+            with st.expander("Debug: LLM Evidence Packet"):
+                st.json(log_data.get("committee_evidence", {}))
         
         # --- 3E: Final Human Governance Decision ---
         st.markdown("---")
@@ -3226,123 +3232,124 @@ if workflow_page == "📝 Audit Log":
         audit_df = pd.DataFrame(build_audit_table_rows(audit_trail_db))
         st.dataframe(audit_df, use_container_width=True)
         
-        st.markdown("#### 🔍 Detailed Audit Entry Viewer")
-        reversed_audit = list(reversed(audit_trail_db))
-        selected_audit_id = st.selectbox(
-            "Select Audit Log Entry to View Details:", 
-            options=range(len(reversed_audit)),
-            format_func=lambda idx: f"[{reversed_audit[idx].get('timestamp', 'N/A')}] Shift: {reversed_audit[idx].get('shift_date', 'N/A')} ({reversed_audit[idx].get('shift_type', 'N/A')}) — {reversed_audit[idx].get('department', 'N/A')}",
-            key="audit_log_selector"
-        )
-        selected_entry = reversed_audit[selected_audit_id]
+        with st.expander("🔍 View detailed audit entry", expanded=False):
+            st.markdown("#### 🔍 Detailed Audit Entry Viewer")
+            reversed_audit = list(reversed(audit_trail_db))
+            selected_audit_id = st.selectbox(
+                "Select Audit Log Entry to View Details:", 
+                options=range(len(reversed_audit)),
+                format_func=lambda idx: f"[{reversed_audit[idx].get('timestamp', 'N/A')}] Shift: {reversed_audit[idx].get('shift_date', 'N/A')} ({reversed_audit[idx].get('shift_type', 'N/A')}) — {reversed_audit[idx].get('department', 'N/A')}",
+                key="audit_log_selector"
+            )
+            selected_entry = reversed_audit[selected_audit_id]
         
-        col_ad1, col_ad2 = st.columns(2)
-        with col_ad1:
-            st.markdown(f"**Predicted Wait Time**: {selected_entry.get('predicted_wait_time', 'N/A')}")
-            st.markdown(f"**Final Staffing Cost**: {selected_entry.get('estimated_cost', 'N/A')}")
-            st.markdown(f"**Base XGBoost Staffing Need**: `{selected_entry.get('base_nurses_needed', 'N/A')} nurse(s)`")
-            st.markdown(f"**Research-Adjusted Staffing Need**: `{selected_entry.get('research_adjusted_nurses_needed', 'N/A')} nurse(s)`")
-            st.markdown(f"**Staffing Cost (Base)**: `${selected_entry.get('staffing_cost_before', 0.0):.2f}`")
-            st.markdown(f"**Staffing Cost (Adjusted)**: `${selected_entry.get('staffing_cost_after', 0.0):.2f}`")
-            st.markdown(f"**Staffing Cost Increase**: `${selected_entry.get('cost_increase', 0.0):.2f}`")
-            st.markdown(f"**Human Decision**: `{selected_entry.get('human_decision', 'N/A')}`")
-            st.markdown(f"**Override Stage**: `{selected_entry.get('override_stage', 'N/A')}`")
-            if selected_entry.get('override_reason'):
-                st.markdown(f"**Override Reason**: *{selected_entry.get('override_reason')}*")
-        with col_ad2:
-            st.markdown(f"**Selected Nurse(s)**: {selected_entry.get('final_selected_nurse', 'None')}")
-            st.markdown(f"**Final Nurses Recommended**: `{selected_entry.get('final_nurses_recommended', 'N/A')}`")
-            st.markdown(f"**Nurse Adjustment Reasons**: `{', '.join(selected_entry.get('nurse_adjustment_reasons', [])) or 'None'}`")
-            st.markdown(f"**Approval Required**: `{'Yes' if selected_entry.get('approval_required') else 'No'}`")
-            st.markdown(f"**Compliance Warnings**: `{selected_entry.get('compliance_warnings', 'None')}`")
-            st.markdown(f"**Token Mode**: `{selected_entry.get('token_usage_mode', 'N/A')}`")
+            col_ad1, col_ad2 = st.columns(2)
+            with col_ad1:
+                st.markdown(f"**Predicted Wait Time**: {selected_entry.get('predicted_wait_time', 'N/A')}")
+                st.markdown(f"**Final Staffing Cost**: {selected_entry.get('estimated_cost', 'N/A')}")
+                st.markdown(f"**Base XGBoost Staffing Need**: `{selected_entry.get('base_nurses_needed', 'N/A')} nurse(s)`")
+                st.markdown(f"**Research-Adjusted Staffing Need**: `{selected_entry.get('research_adjusted_nurses_needed', 'N/A')} nurse(s)`")
+                st.markdown(f"**Staffing Cost (Base)**: `${selected_entry.get('staffing_cost_before', 0.0):.2f}`")
+                st.markdown(f"**Staffing Cost (Adjusted)**: `${selected_entry.get('staffing_cost_after', 0.0):.2f}`")
+                st.markdown(f"**Staffing Cost Increase**: `${selected_entry.get('cost_increase', 0.0):.2f}`")
+                st.markdown(f"**Human Decision**: `{selected_entry.get('human_decision', 'N/A')}`")
+                st.markdown(f"**Override Stage**: `{selected_entry.get('override_stage', 'N/A')}`")
+                if selected_entry.get('override_reason'):
+                    st.markdown(f"**Override Reason**: *{selected_entry.get('override_reason')}*")
+            with col_ad2:
+                st.markdown(f"**Selected Nurse(s)**: {selected_entry.get('final_selected_nurse', 'None')}")
+                st.markdown(f"**Final Nurses Recommended**: `{selected_entry.get('final_nurses_recommended', 'N/A')}`")
+                st.markdown(f"**Nurse Adjustment Reasons**: `{', '.join(selected_entry.get('nurse_adjustment_reasons', [])) or 'None'}`")
+                st.markdown(f"**Approval Required**: `{'Yes' if selected_entry.get('approval_required') else 'No'}`")
+                st.markdown(f"**Compliance Warnings**: `{selected_entry.get('compliance_warnings', 'None')}`")
+                st.markdown(f"**Token Mode**: `{selected_entry.get('token_usage_mode', 'N/A')}`")
             
-        st.markdown("##### 🔬 Recommended Interventions & Costs")
-        interventions_data = selected_entry.get("committee_evidence", {}).get("recommended_interventions", [])
-        if not interventions_data:
-            interventions_data = selected_entry.get("costed_interventions", [])
-            if isinstance(interventions_data, str):
-                try:
-                    import json
-                    interventions_data = json.loads(interventions_data)
-                except:
-                    interventions_data = []
+            st.markdown("##### 🔬 Recommended Interventions & Costs")
+            interventions_data = selected_entry.get("committee_evidence", {}).get("recommended_interventions", [])
+            if not interventions_data:
+                interventions_data = selected_entry.get("costed_interventions", [])
+                if isinstance(interventions_data, str):
+                    try:
+                        import json
+                        interventions_data = json.loads(interventions_data)
+                    except:
+                        interventions_data = []
                     
-        if interventions_data:
-            for idx, p in enumerate(interventions_data):
-                cost_val = p.get('estimated_cost', 0.0)
-                cost_str = f"${cost_val:,.2f}" if isinstance(cost_val, (int, float)) else str(cost_val)
-                st.markdown(f"""
-                - **{p.get('name')}**: Cost: **{cost_str}** ({p.get('cost_status', 'estimated')})
-                  * Bottleneck: `{p.get('target_bottleneck')}` | Formula: `{p.get('cost_formula', 'N/A')}`
-                """)
+            if interventions_data:
+                for idx, p in enumerate(interventions_data):
+                    cost_val = p.get('estimated_cost', 0.0)
+                    cost_str = f"${cost_val:,.2f}" if isinstance(cost_val, (int, float)) else str(cost_val)
+                    st.markdown(f"""
+                    - **{p.get('name')}**: Cost: **{cost_str}** ({p.get('cost_status', 'estimated')})
+                      * Bottleneck: `{p.get('target_bottleneck')}` | Formula: `{p.get('cost_formula', 'N/A')}`
+                    """)
             
-            total_int_cost = selected_entry.get("committee_evidence", {}).get("intervention_cost_summary", {}).get("total_estimated_intervention_cost", 0.0)
-            if not total_int_cost:
-                total_int_cost = selected_entry.get("research_module_intervention_cost", 0.0)
-            st.markdown(f"**Total Estimated Intervention Cost**: `${total_int_cost:,.2f}`")
-        else:
-            st.info("No research-module interventions recommended for this resolution.")
+                total_int_cost = selected_entry.get("committee_evidence", {}).get("intervention_cost_summary", {}).get("total_estimated_intervention_cost", 0.0)
+                if not total_int_cost:
+                    total_int_cost = selected_entry.get("research_module_intervention_cost", 0.0)
+                st.markdown(f"**Total Estimated Intervention Cost**: `${total_int_cost:,.2f}`")
+            else:
+                st.info("No research-module interventions recommended for this resolution.")
         
-        st.markdown("---")
-        st.markdown("#### 📊 Decision Summary")
-        col_au1, col_au2, col_au3 = st.columns(3)
-        with col_au1:
-            st.metric("Total Decisions", len(audit_trail_db))
-        with col_au2:
-            approved = len([e for e in audit_trail_db if e['human_decision'] == 'Approved'])
-            st.metric("Approved", approved)
-        with col_au3:
-            overrides = len([e for e in audit_trail_db if 'Override' in e['human_decision']])
-            st.metric("Overrides", overrides)
+            st.markdown("---")
+            st.markdown("#### 📊 Decision Summary")
+            col_au1, col_au2, col_au3 = st.columns(3)
+            with col_au1:
+                st.metric("Total Decisions", len(audit_trail_db))
+            with col_au2:
+                approved = len([e for e in audit_trail_db if e['human_decision'] == 'Approved'])
+                st.metric("Approved", approved)
+            with col_au3:
+                overrides = len([e for e in audit_trail_db if 'Override' in e['human_decision']])
+                st.metric("Overrides", overrides)
 
-        # Download button for Audit Trail as CSV
-        csv_data = audit_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Audit Trail as CSV",
-            data=csv_data,
-            file_name=f"audit_trail_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+            # Download button for Audit Trail as CSV
+            csv_data = audit_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Audit Trail as CSV",
+                data=csv_data,
+                file_name=f"audit_trail_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
 
-st.markdown("---")
-col_bot1, col_bot2 = st.columns(2)
-with col_bot1:
-    with st.expander("🛠️ Architecture & How It Works"):
-        st.markdown("""
-        **Data & Workflow Flowchart:**
-        ```
-        ER Shift Scenario Config
-          ↓
-        XGBoost Wait-Time Prediction
-          ↓
-        Stress Simulator (What-If Demand Surge)
-          ↓
-        Nurse Need Estimator (Rule-Based Mapping)
-          ↓
-        ADK-Style Multi-Agent Review
-          ↓
-        Human-in-the-Loop Approval & Override
-          ↓
-        Roster Update & Shift Schedule Write
-          ↓
-        Persistent Audit Log
-        ```
-        """)
+    st.markdown("---")
+    col_bot1, col_bot2 = st.columns(2)
+    with col_bot1:
+        with st.expander("🛠️ Architecture & How It Works"):
+            st.markdown("""
+            **Data & Workflow Flowchart:**
+            ```
+            ER Shift Scenario Config
+              ↓
+            XGBoost Wait-Time Prediction
+              ↓
+            Stress Simulator (What-If Demand Surge)
+              ↓
+            Nurse Need Estimator (Rule-Based Mapping)
+              ↓
+            ADK-Style Multi-Agent Review
+              ↓
+            Human-in-the-Loop Approval & Override
+              ↓
+            Roster Update & Shift Schedule Write
+              ↓
+            Persistent Audit Log
+            ```
+            """)
 
-with col_bot2:
-    with st.expander("⚠️ Prototype Limitations"):
-        st.markdown("""
-        - Uses synthetic/reduced ER wait-time datasets.
-        - Nurse roster is simulated mock data.
-        - Shift schedule is mock data.
-        - Before/after wait-time reduction is a model-based estimate.
-        - Not validated on real hospital production workloads or clinical environments.
-        - Human supervisor approval is strictly required before any roster changes are committed.
-        - This is a decision-support prototype and does not possess clinical staffing authority.
-        """)
+    with col_bot2:
+        with st.expander("⚠️ Prototype Limitations"):
+            st.markdown("""
+            - Uses synthetic/reduced ER wait-time datasets.
+            - Nurse roster is simulated mock data.
+            - Shift schedule is mock data.
+            - Before/after wait-time reduction is a model-based estimate.
+            - Not validated on real hospital production workloads or clinical environments.
+            - Human supervisor approval is strictly required before any roster changes are committed.
+            - This is a decision-support prototype and does not possess clinical staffing authority.
+            """)
 
 # Tab 5: Research Modules Status
 if workflow_page == "🔬 Research & Validation":
