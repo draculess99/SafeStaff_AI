@@ -1033,7 +1033,7 @@ def generate_cno_response(user_message, chat_history, context, audio_bytes=None)
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         
         system_prompt = f"""You are the Chief Nursing Officer (CNO) AI Agent of this hospital.
 You are defending and explaining the current staffing recommendation made by the Financial and Patient Safety Agents.
@@ -1347,7 +1347,7 @@ if "live_gemini_usage" not in st.session_state:
         "status": "idle",
         "error": "",
         "model_used": "",
-        "selected_model": st.session_state.get("model_option", "gemini-1.5-flash")
+        "selected_model": st.session_state.get("model_option", "gemini-2.0-flash")
     }
 
 ai_mode = st.sidebar.radio(
@@ -1362,11 +1362,23 @@ with st.sidebar.expander("🔌 System Details", expanded=True):
     st.write(f"**API Connection**: {api_key_status}")
     model_option = st.selectbox(
         "Gemini Model Target",
-        ["gemini-1.5-flash", "gemini-1.5-pro"],
+        ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-3.5-flash"],
         index=0,
-        help="Use a supported Gemini model. Invalid model names can make the live call fail and leave token usage at zero."
+        help="Gemini 1.5 model IDs often return 404 now. Use a current model; the backend will fall back to an available generateContent model if this target is unavailable."
     )
     st.session_state.model_option = model_option
+    if st.button("Check available Gemini models", key="check_gemini_models_btn"):
+        try:
+            model_check = requests.get(f"{API_BASE_URL}/api/gemini_models", timeout=20).json()
+            if model_check.get("success"):
+                models = model_check.get("models", [])
+                st.success(f"Backend Gemini key OK. {len(models)} generateContent models available.")
+                if models:
+                    st.caption("Available: " + ", ".join(models[:8]))
+            else:
+                st.error(model_check.get("error", "Could not inspect Gemini models."))
+        except Exception as gemini_check_e:
+            st.error(f"Could not check Gemini models: {gemini_check_e}")
 
     # Keep the token panel aligned with the currently selected Gemini model.
     # If the operator changes model after a previous live call, do not keep
@@ -1448,7 +1460,7 @@ with st.sidebar.expander("🪙 Token Usage / Low-Token Mode", expanded=True):
     st.write(f"**Estimated Cost**: ${sidebar_costs.get('estimated_api_cost', 0.0):.5f}")
     if is_live:
         live_status = live_usage.get("status", "idle")
-        selected_model = live_usage.get("selected_model") or st.session_state.get("model_option", "gemini-1.5-flash")
+        selected_model = live_usage.get("selected_model") or st.session_state.get("model_option", "gemini-2.0-flash")
         actual_model = live_usage.get("model_used") or ""
 
         # Separate the operator's selected target from the model that actually
@@ -1464,6 +1476,11 @@ with st.sidebar.expander("🪙 Token Usage / Low-Token Mode", expanded=True):
             st.error("Live Gemini selected, but the API call failed.")
             if actual_model:
                 st.caption(f"Last attempted model: `{actual_model}`")
+            if live_usage.get("normalized_selected_model") and live_usage.get("normalized_selected_model") != selected_model:
+                st.caption(f"Mapped retired/old model to: `{live_usage.get('normalized_selected_model')}`")
+            attempted = live_usage.get("attempted_models") or []
+            if attempted:
+                st.caption("Attempted models: " + ", ".join([f"`{m}`" for m in attempted[:4]]))
             st.caption(live_usage.get("error", "Check backend API key/model configuration."))
         else:
             st.caption("Live mode selected. Tokens will update after you launch the Multi-Agent Shortage Solver.")
@@ -2305,7 +2322,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
                 "visithour": hour_map.get(scen['shift_type'], 12),
                 "base_wait_time": float(st.session_state.get("pred_wait", 0)),
                 "enable_llm_debate": enable_llm,
-                "gemini_model": st.session_state.get("model_option", "gemini-1.5-flash"),
+                "gemini_model": st.session_state.get("model_option", "gemini-2.0-flash"),
                 "preset_data": preset_info
             }
             
@@ -2333,7 +2350,10 @@ if workflow_page == "📋 Roster & Shortage Solver":
                                 "status": usage_status,
                                 "error": resolved_live_usage.get("error", ""),
                                 "model_used": resolved_live_usage.get("model_used", ""),
-                                "selected_model": resolved_live_usage.get("selected_model", st.session_state.get("model_option", "gemini-1.5-flash"))
+                                "selected_model": resolved_live_usage.get("selected_model", st.session_state.get("model_option", "gemini-2.0-flash")),
+                                "normalized_selected_model": resolved_live_usage.get("normalized_selected_model", ""),
+                                "attempted_models": resolved_live_usage.get("attempted_models", []),
+                                "available_models": resolved_live_usage.get("available_models", [])
                             }
                             st.session_state.live_gemini_usage = live_usage
                             st.session_state.pending_log.setdefault("costs", {})
@@ -2366,7 +2386,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
                                     },
                                     "rec_nurses": st.session_state.pending_log.get("resolved_nurses", []),
                                     "rejected_candidates": st.session_state.pending_log.get("rejected_candidates", []),
-                                    "model": st.session_state.get("model_option", "gemini-1.5-flash")
+                                    "model": st.session_state.get("model_option", "gemini-2.0-flash")
                                 }
                                 debate_res = requests.post(f"{API_BASE_URL}/api/generate_live_debate", json=live_payload, timeout=60)
                                 debate_json = debate_res.json()
@@ -2385,8 +2405,11 @@ if workflow_page == "📋 Roster & Shortage Solver":
                                         "estimated_api_cost": float(debate.get("estimated_api_cost", 0.0) or 0.0),
                                         "status": "called",
                                         "error": "",
-                                        "model_used": debate.get("model_used") or debate_json.get("model_used") or st.session_state.get("model_option", "gemini-1.5-flash"),
-                                        "selected_model": st.session_state.get("model_option", "gemini-1.5-flash")
+                                        "model_used": debate.get("model_used") or debate_json.get("model_used") or st.session_state.get("model_option", "gemini-2.0-flash"),
+                                        "selected_model": st.session_state.get("model_option", "gemini-2.0-flash"),
+                                        "normalized_selected_model": debate.get("normalized_selected_model", ""),
+                                        "attempted_models": debate.get("attempted_models", []),
+                                        "available_models": debate.get("available_models", [])
                                     }
                                     st.session_state.live_gemini_usage = live_usage
                                     for k in ["llm_calls", "prompt_tokens", "response_tokens", "total_tokens", "estimated_api_cost"]:
@@ -2410,8 +2433,11 @@ if workflow_page == "📋 Roster & Shortage Solver":
                                         "estimated_api_cost": 0.0,
                                         "status": "failed",
                                         "error": err,
-                                        "model_used": debate_json.get("model_used", st.session_state.get("model_option", "gemini-1.5-flash")),
-                                        "selected_model": st.session_state.get("model_option", "gemini-1.5-flash")
+                                        "model_used": debate_json.get("model_used", st.session_state.get("model_option", "gemini-2.0-flash")),
+                                        "selected_model": st.session_state.get("model_option", "gemini-2.0-flash"),
+                                        "normalized_selected_model": debate_json.get("normalized_selected_model", ""),
+                                        "attempted_models": debate_json.get("attempted_models", []),
+                                        "available_models": debate_json.get("available_models", [])
                                     }
                                     st.warning(f"Live Gemini debate did not run: {err}")
                             except Exception as live_e:
@@ -2423,8 +2449,8 @@ if workflow_page == "📋 Roster & Shortage Solver":
                                     "estimated_api_cost": 0.0,
                                     "status": "failed",
                                     "error": str(live_e),
-                                    "model_used": st.session_state.get("model_option", "gemini-1.5-flash"),
-                                    "selected_model": st.session_state.get("model_option", "gemini-1.5-flash")
+                                    "model_used": st.session_state.get("model_option", "gemini-2.0-flash"),
+                                    "selected_model": st.session_state.get("model_option", "gemini-2.0-flash")
                                 }
                                 st.warning(f"Live Gemini debate failed; using local recommendation fallback: {live_e}")
 
