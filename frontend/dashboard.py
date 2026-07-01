@@ -778,80 +778,11 @@ def normalize_records(payload, list_keys=("data", "results", "items", "schedule"
             return [payload]
     return []
 
-def summarize_active_agents(value):
-    """Create a compact, readable summary of active agent records for the audit table."""
-    if not value:
-        return "None"
-    if isinstance(value, str):
-        return value
-    if not isinstance(value, list):
-        return format_nested_value(value)
-
-    agent_names = []
-    for item in value:
-        if isinstance(item, dict):
-            name = (
-                item.get("agent_name")
-                or item.get("name")
-                or item.get("agent")
-                or item.get("id")
-                or item.get("title")
-            )
-            if name:
-                agent_names.append(str(name))
-        elif item:
-            agent_names.append(str(item))
-
-    if not agent_names:
-        return "None"
-    return f"{len(agent_names)} active: " + "; ".join(agent_names)
-
-
-def summarize_agent_reasons(value, max_reasons=4):
-    """Create a compact summary of why agents/modules activated."""
-    if not value:
-        return "None"
-    if isinstance(value, str):
-        return value
-
-    reasons = []
-    if isinstance(value, list):
-        for item in value:
-            if isinstance(item, dict):
-                reason = (
-                    item.get("activation_reason")
-                    or item.get("reason")
-                    or item.get("description")
-                    or item.get("status")
-                    or item.get("signal_used")
-                )
-                if reason:
-                    reasons.append(str(reason))
-            elif item:
-                reasons.append(str(item))
-    else:
-        return format_nested_value(value)
-
-    # Preserve order while removing duplicates.
-    unique_reasons = []
-    for reason in reasons:
-        if reason not in unique_reasons:
-            unique_reasons.append(reason)
-
-    if not unique_reasons:
-        return "None"
-    if len(unique_reasons) > max_reasons:
-        shown = unique_reasons[:max_reasons]
-        return "; ".join(shown) + f"; +{len(unique_reasons) - max_reasons} more"
-    return "; ".join(unique_reasons)
-
-
 def format_nested_value(value):
     """Convert lists/dicts from API payloads into readable strings for tables.
 
-    Streamlit/Arrow can render nested objects poorly in table cells. The audit log
-    table should show compact summaries, while the detailed audit expander keeps
-    the full underlying record available for inspection.
+    Streamlit/Arrow can show nested objects as [object Object]. The audit log table
+    is easier to read when nested agent/reason/cost fields are flattened first.
     """
     if value is None:
         return ""
@@ -863,33 +794,19 @@ def format_nested_value(value):
         formatted_items = []
         for item in value:
             if isinstance(item, dict):
-                name = (
-                    item.get("agent_name")
-                    or item.get("name")
-                    or item.get("agent")
-                    or item.get("id")
-                    or item.get("title")
-                )
-                reason = (
-                    item.get("activation_reason")
-                    or item.get("reason")
-                    or item.get("description")
-                    or item.get("status")
-                    or item.get("signal_used")
-                )
+                name = item.get("name") or item.get("agent") or item.get("id") or item.get("title")
+                reason = item.get("reason") or item.get("description") or item.get("status")
                 if name and reason:
                     formatted_items.append(f"{name}: {reason}")
                 elif name:
                     formatted_items.append(str(name))
-                elif reason:
-                    formatted_items.append(str(reason))
                 else:
-                    formatted_items.append(", ".join(f"{k}: {v}" for k, v in item.items() if not isinstance(v, (list, dict))))
+                    formatted_items.append(json.dumps(item, ensure_ascii=False))
             elif isinstance(item, list):
                 formatted_items.append(", ".join(str(x) for x in item))
             else:
                 formatted_items.append(str(item))
-        return "; ".join(x for x in formatted_items if x)
+        return "; ".join(formatted_items)
     if isinstance(value, dict):
         if not value:
             return ""
@@ -901,41 +818,13 @@ def format_nested_value(value):
         return "; ".join(compact_pairs)
     return str(value)
 
-
 def build_audit_table_rows(audit_entries):
-    """Return a compact display-safe audit table without nested [object Object] cells."""
-    preferred_columns = [
-        ("timestamp", "Timestamp"),
-        ("shift_date", "Shift Date"),
-        ("shift_type", "Shift"),
-        ("department", "Department"),
-        ("human_decision", "Human Decision"),
-        ("roster_update_status", "Roster Update"),
-        ("risk_level", "Risk Level"),
-        ("predicted_wait_time", "Predicted Wait"),
-        ("additional_nurses_needed", "Additional Nurses"),
-        ("final_nurses_recommended", "Final Nurses"),
-        ("approval_required", "Approval Required"),
-        ("active_agents", "Active Agents"),
-        ("agent_activation_reasons", "Activation Reasons"),
-        ("token_mode", "Token Mode"),
-    ]
-
+    """Return a display-safe audit table without [object Object] nested cells."""
     rows = []
     for entry in audit_entries:
         if not isinstance(entry, dict):
             continue
-        row = {}
-        for key, label in preferred_columns:
-            if key not in entry:
-                continue
-            if key == "active_agents":
-                row[label] = summarize_active_agents(entry.get(key))
-            elif key == "agent_activation_reasons":
-                row[label] = summarize_agent_reasons(entry.get(key))
-            else:
-                row[label] = format_nested_value(entry.get(key))
-        rows.append(row)
+        rows.append({key: format_nested_value(value) for key, value in entry.items()})
     return rows
 
 def _fetch_records(endpoint, list_keys, timeout=5):
@@ -1392,6 +1281,28 @@ debate_icon = "🟢" if pending_log else "⚪"
 # ER Operational Status Light (Sidebar)
 curr_risk = st.session_state.get("evidence", {}).get("adjusted_operational_risk", "Normal")
 status_info = get_status_light_mapping(curr_risk)
+
+# Operational pressure load indicator (sidebar)
+selected_demo_preset = st.session_state.get("demo_select", "Select a Demo Scenario...")
+pressure_inputs_loaded = bool(selected_demo_preset and selected_demo_preset != "Select a Demo Scenario...")
+pressure_label = "LOADED" if pressure_inputs_loaded else "CUSTOM"
+pressure_color = "#22c55e" if pressure_inputs_loaded else "#38bdf8"
+pressure_bg = "rgba(34, 197, 94, 0.10)" if pressure_inputs_loaded else "rgba(56, 189, 248, 0.10)"
+pressure_border = "#22c55e" if pressure_inputs_loaded else "#38bdf8"
+pressure_source = selected_demo_preset if pressure_inputs_loaded else "Manual shift inputs"
+pressure_detail = "Demo preset overrides active" if pressure_inputs_loaded else "Using current sliders and form values"
+
+st.sidebar.markdown(f"""
+<div style="text-align: center; margin-bottom: 14px;">
+    <div style="background: {pressure_bg}; border: 1.5px solid {pressure_border}; border-radius: 8px; padding: 10px 8px; box-shadow: 0 0 12px rgba(34,197,94,0.10);">
+        <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #cbd5e1; font-weight: 800; margin-bottom: 4px;">Operational Pressure Inputs</div>
+        <div style="font-size: 1.02rem; font-weight: 900; color: {pressure_color};">● {pressure_label}</div>
+        <div style="font-size: 0.78rem; color: #e5e7eb; font-weight: 700; margin-top: 4px; line-height: 1.25;">{pressure_detail}</div>
+        <div style="font-size: 0.70rem; color: #94a3b8; font-weight: 600; margin-top: 4px; line-height: 1.25;">{pressure_source}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 st.sidebar.markdown(f"""
 <div style="text-align: center; margin-bottom: 20px;">
     <div style="background: rgba(0,0,0,0.3); border: 2px solid {status_info['color']}; border-radius: 8px; padding: 10px;">
