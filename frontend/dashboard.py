@@ -37,9 +37,6 @@ if "audit_trail" not in st.session_state:
 if "cno_chat_history" not in st.session_state:
     st.session_state.cno_chat_history = []
 
-# Workflow selector constants
-ROSTER_WORKFLOW_LABEL = "📋 Roster & Shortage Solver"
-
 # Demo presets
 demo_scenarios = {
     "Select a Demo Scenario...": None,
@@ -183,8 +180,7 @@ def on_demo_scenario_change():
         # Demo scenario presets belong to the main roster/shortage workflow.
         # Keep the user anchored there after a preset is loaded, even if they
         # were previously viewing Stress, Explainability, Audit, etc.
-        st.session_state["workflow_page"] = ROSTER_WORKFLOW_LABEL
-        st.session_state["_force_roster_workflow_after_preset"] = True
+        st.session_state.workflow_page = "📋 Roster & Shortage Solver"
 
         data = demo_scenarios[sel]
         st.session_state.scen_date = data["date"]
@@ -782,6 +778,55 @@ def normalize_records(payload, list_keys=("data", "results", "items", "schedule"
             return [payload]
     return []
 
+def format_nested_value(value):
+    """Convert lists/dicts from API payloads into readable strings for tables.
+
+    Streamlit/Arrow can show nested objects as [object Object]. The audit log table
+    is easier to read when nested agent/reason/cost fields are flattened first.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, list):
+        if not value:
+            return ""
+        formatted_items = []
+        for item in value:
+            if isinstance(item, dict):
+                name = item.get("name") or item.get("agent") or item.get("id") or item.get("title")
+                reason = item.get("reason") or item.get("description") or item.get("status")
+                if name and reason:
+                    formatted_items.append(f"{name}: {reason}")
+                elif name:
+                    formatted_items.append(str(name))
+                else:
+                    formatted_items.append(json.dumps(item, ensure_ascii=False))
+            elif isinstance(item, list):
+                formatted_items.append(", ".join(str(x) for x in item))
+            else:
+                formatted_items.append(str(item))
+        return "; ".join(formatted_items)
+    if isinstance(value, dict):
+        if not value:
+            return ""
+        compact_pairs = []
+        for key, val in value.items():
+            if isinstance(val, (list, dict)):
+                val = format_nested_value(val)
+            compact_pairs.append(f"{key}: {val}")
+        return "; ".join(compact_pairs)
+    return str(value)
+
+def build_audit_table_rows(audit_entries):
+    """Return a display-safe audit table without [object Object] nested cells."""
+    rows = []
+    for entry in audit_entries:
+        if not isinstance(entry, dict):
+            continue
+        rows.append({key: format_nested_value(value) for key, value in entry.items()})
+    return rows
+
 def _fetch_records(endpoint, list_keys, timeout=5):
     """Fetch a read-only endpoint and normalize the response into a list.
 
@@ -859,7 +904,10 @@ def get_inflow_history():
 def add_audit_log(entry):
     try:
         response = requests.post(f"{API_BASE_URL}/api/audit_logs", json=entry, timeout=15)
-        return response.json().get("success", False)
+        success = response.json().get("success", False) if response.ok else False
+        if success:
+            clear_dashboard_bootstrap_cache()
+        return success
     except Exception:
         return False
 
@@ -1515,29 +1563,17 @@ def render_styled_table(df):
     return html
 
 st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Choose a tab below. This keeps the old tab-style workflow, but only renders the selected section for speed.</p>", unsafe_allow_html=True)
-
-WORKFLOW_OPTIONS = [
-    ROSTER_WORKFLOW_LABEL,
-    "⚡ System Stress Simulator",
-    "🔍 Explainability & Token Logs",
-    "📝 Audit Log",
-    "🔬 Research & Validation",
-    "🏛️ AI Committee Debate & Planner",
-    "📈 Model Performance",
-]
-
-# When a demo scenario preset is loaded, force the radio widget state back to
-# the main roster workflow before the widget is rendered. This makes the tab
-# both selected in session state and visibly "pressed" in the Streamlit radio UI.
-if st.session_state.pop("_force_roster_workflow_after_preset", False):
-    st.session_state["workflow_page"] = ROSTER_WORKFLOW_LABEL
-
-if st.session_state.get("workflow_page") not in WORKFLOW_OPTIONS:
-    st.session_state["workflow_page"] = ROSTER_WORKFLOW_LABEL
-
 workflow_page = st.radio(
     "Workflow",
-    WORKFLOW_OPTIONS,
+    [
+        "📋 Roster & Shortage Solver",
+        "⚡ System Stress Simulator",
+        "🔍 Explainability & Token Logs",
+        "📝 Audit Log",
+        "🔬 Research & Validation",
+        "🏛️ AI Committee Debate & Planner",
+        "📈 Model Performance",
+    ],
     horizontal=True,
     key="workflow_page",
     label_visibility="collapsed",
@@ -1546,7 +1582,7 @@ workflow_page = st.radio(
 
 # Selected workflow panel banner: makes the content area feel themed, not just the tab button.
 WORKFLOW_PANEL_META = {
-    ROSTER_WORKFLOW_LABEL: {
+    "📋 Roster & Shortage Solver": {
         "class": "roster",
         "title": "📋 Roster & Shortage Solver",
         "help": "Primary operating panel for shift schedule, nurse registry, shortage resolution, approval, and roster updates.",
@@ -1722,6 +1758,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
                         res_data = res.json()
                         if res_data.get("success"):
                             st.success(res_data["message"])
+                            clear_dashboard_bootstrap_cache()
                             st.rerun()
                         else:
                             st.error(res_data.get("error", "Failed to add nurse"))
@@ -2874,6 +2911,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
                     st.session_state.risk_assessed = False
                     st.session_state.last_decision_status = "Rejected"
                     st.session_state.cno_chat_history = []
+                    clear_dashboard_bootstrap_cache()
                     st.rerun()
                 else:
                     st.error(res_json.get("error", "Rejection failed"))
@@ -3185,7 +3223,7 @@ if workflow_page == "📝 Audit Log":
     if not audit_trail_db:
         st.info("No audit entries yet. Complete a full workflow (Steps 1–3) to generate an audit record.")
     else:
-        audit_df = pd.DataFrame(audit_trail_db)
+        audit_df = pd.DataFrame(build_audit_table_rows(audit_trail_db))
         st.dataframe(audit_df, use_container_width=True)
         
         st.markdown("#### 🔍 Detailed Audit Entry Viewer")
