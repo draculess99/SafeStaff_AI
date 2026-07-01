@@ -1491,13 +1491,9 @@ st.markdown(
         }}
     </style>
     <div class="workflow-panel-banner workflow-panel-{_panel['class']}">
-        <div class="panel-kicker">Selected workflow panel</div>
+        <div class="panel-kicker">Current workspace</div>
         <div class="panel-title">{_panel['title']}</div>
         <p class="panel-help">{_panel['help']}</p>
-    </div>
-    <div class="workflow-content-rail">
-        <div class="rail-kicker">Active content area</div>
-        <div class="rail-text">Everything below is now themed to the selected workflow: <strong>{_panel['title']}</strong>.</div>
     </div>
     """,
     unsafe_allow_html=True,
