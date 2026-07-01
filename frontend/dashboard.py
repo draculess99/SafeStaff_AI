@@ -279,23 +279,30 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
     }
 
-    /* Performance workflow selector: keep the old tab-like look without using st.tabs.
-       This preserves lazy rendering: only the selected workflow executes. */
+    /* Performance workflow selector: compact one-line tab buttons.
+       Keeps lazy rendering: only the selected workflow executes. */
     div[role="radiogroup"] {
-        gap: 8px !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
         align-items: stretch !important;
-        flex-wrap: wrap !important;
         margin-bottom: 18px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        white-space: nowrap !important;
+        padding-bottom: 4px !important;
+        scrollbar-width: thin !important;
     }
     div[role="radiogroup"] label {
         background-color: rgba(30, 41, 59, 0.5) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 8px !important;
-        padding: 8px 14px !important;
-        margin-right: 6px !important;
-        min-height: 42px !important;
+        padding: 6px 10px !important;
+        margin-right: 0 !important;
+        min-height: 36px !important;
         display: flex !important;
         align-items: center !important;
+        flex: 0 0 auto !important;
         transition: all 0.2s ease-in-out !important;
     }
     div[role="radiogroup"] label:hover {
@@ -309,10 +316,11 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
     }
     div[role="radiogroup"] label p {
-        font-size: 1.02rem !important;
+        font-size: 0.88rem !important;
         font-weight: 700 !important;
         color: #f3f4f6 !important;
         margin: 0 !important;
+        white-space: nowrap !important;
     }
     
     .main .block-container {
