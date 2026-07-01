@@ -10,6 +10,136 @@ from typing import Dict, Any, List
 app = Flask(__name__)
 db = JSONDatabase()
 
+
+def _safe_int(value, default=0):
+    try:
+        return int(value or default)
+    except Exception:
+        return default
+
+def _estimate_tokens(text):
+    return max(1, len(str(text or "")) // 4)
+
+def _build_live_debate_prompt(context, rec_nurses, rejected_candidates):
+    rejected_ids = []
+    for r in rejected_candidates or []:
+        if isinstance(r, dict):
+            rejected_ids.append(r.get("id", str(r)))
+        else:
+            rejected_ids.append(str(r))
+    return f"""
+Hospital Scenario Context:
+{json.dumps(context, indent=2, default=str)}
+
+Recommended Nurses by Cost & Fatigue-Aware Optimizer: {rec_nurses}
+Rejected Candidates (Failed Compliance): {rejected_ids}
+
+Please act as the following agents and generate a debate.
+Format your response using these exact headings:
+
+PART 1: STAFFING VS COMPLIANCE
+**Staffing Planner Agent**: [argument]
+**Compliance Guard Agent**: [argument]
+
+PART 2: SAFETY VS COST
+**Patient Safety Agent**: [argument]
+**Financial Auditor Agent**: [argument]
+
+PART 3: FINAL ARBITER
+**Final Arbiter Agent**: [decision]
+"""
+
+def _parse_live_debate_text(response_text):
+    response_text = response_text or ""
+    staffing_part = response_text
+    safety_part = "Live API response did not include a separate safety/cost section."
+    final_part = "Live API response did not include a separate final arbiter section."
+    if "PART 2:" in response_text:
+        parts = response_text.split("PART 2:", 1)
+        staffing_part = parts[0].replace("PART 1: STAFFING VS COMPLIANCE", "").strip()
+        if "PART 3:" in parts[1]:
+            subparts = parts[1].split("PART 3:", 1)
+            safety_part = subparts[0].replace("SAFETY VS COST", "").strip()
+            final_part = subparts[1].replace("FINAL ARBITER", "").strip()
+        else:
+            safety_part = parts[1].strip()
+    return staffing_part, safety_part, final_part
+
+def _call_live_gemini_debate(context, rec_nurses, rejected_candidates, model_target=None):
+    """Call Gemini once and return a normalized debate/token payload.
+
+This is used by both /api/resolve_shortage and /api/generate_live_debate so
+Live Gemini mode cannot silently fall back to 0-token local mode. If Gemini
+configuration is missing or the API fails, the caller receives a clear failed
+status and an error message.
+    """
+    supported_models = {"gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite"}
+    model_target = model_target or os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    if model_target not in supported_models:
+        model_target = "gemini-1.5-flash"
+
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return {
+            "success": False,
+            "status": "failed",
+            "error": "GOOGLE_API_KEY or GEMINI_API_KEY environment variable is not set in the backend service.",
+            "llm_calls": 0,
+            "prompt_tokens": 0,
+            "response_tokens": 0,
+            "total_tokens": 0,
+            "estimated_api_cost": 0.0,
+            "model_used": model_target
+        }
+
+    prompt = _build_live_debate_prompt(context, rec_nurses, rejected_candidates)
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name=model_target,
+            system_instruction="You are a clinical multi-agent orchestration system for hospital staffing."
+        )
+        response = model.generate_content(prompt)
+        response_text = getattr(response, "text", "") or ""
+        usage = getattr(response, "usage_metadata", None)
+        pt = _safe_int(getattr(usage, "prompt_token_count", 0) if usage else 0)
+        rt = _safe_int(getattr(usage, "candidates_token_count", 0) if usage else 0)
+        tt = _safe_int(getattr(usage, "total_token_count", 0) if usage else 0)
+        if tt <= 0:
+            pt = _estimate_tokens(prompt)
+            rt = _estimate_tokens(response_text)
+            tt = pt + rt
+
+        staffing_part, safety_part, final_part = _parse_live_debate_text(response_text)
+        return {
+            "success": True,
+            "status": "called",
+            "staffing_vs_compliance": staffing_part,
+            "safety_vs_cost": safety_part,
+            "final_arbiter": final_part,
+            "raw_response": response_text,
+            "llm_calls": 1,
+            "prompt_tokens": pt,
+            "response_tokens": rt,
+            "total_tokens": tt,
+            "estimated_api_cost": (pt * 0.000000075) + (rt * 0.0000003),
+            "model_used": model_target,
+            "error": ""
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "status": "failed",
+            "error": f"Live Gemini API Error: {str(e)}",
+            "llm_calls": 0,
+            "prompt_tokens": 0,
+            "response_tokens": 0,
+            "total_tokens": 0,
+            "estimated_api_cost": 0.0,
+            "model_used": model_target
+        }
+
 @app.route("/api/health", methods=["GET"])
 def api_health():
     return jsonify({"status": "ok", "service": "SafeStaff AI backend"})
@@ -179,6 +309,39 @@ def resolve_shortage():
             }
         )
         
+        live_debate = None
+        if data.get("enable_llm_debate", False):
+            live_context = {
+                "scenario": {
+                    "date": date,
+                    "shift_type": shift_type,
+                    "department": department,
+                    "acuity_level": acuity_level,
+                    "required_nurses": required_nurses,
+                    "patient_volume_multiplier": patient_volume_multiplier,
+                    "base_wait_time": float(data.get("base_wait_time", 120.0)),
+                    "preset_data": data.get("preset_data")
+                },
+                "committee_evidence": adk_result.get("committee_evidence", {}),
+                "explainability_narrative": adk_result.get("explainability_narrative", "")
+            }
+            live_debate = _call_live_gemini_debate(
+                live_context,
+                adk_result.get("resolved_nurses", []),
+                adk_result.get("rejected_candidates", []),
+                data.get("gemini_model") or os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+            )
+            if live_debate and live_debate.get("success"):
+                adk_result.setdefault("costs", {})
+                for k in ["llm_calls", "prompt_tokens", "response_tokens", "total_tokens", "estimated_api_cost"]:
+                    adk_result["costs"][k] = live_debate.get(k, 0)
+                adk_result["token_usage"] = {
+                    "prompt": live_debate.get("prompt_tokens", 0),
+                    "response": live_debate.get("response_tokens", 0),
+                    "total": live_debate.get("total_tokens", 0),
+                    "llm_calls": live_debate.get("llm_calls", 0)
+                }
+
         log_entry = {
             "id": log_id,
             "timestamp": datetime.datetime.now().isoformat(),
@@ -199,6 +362,9 @@ def resolve_shortage():
             "final_recommendation_actions": adk_result.get("final_recommendation_actions", "No debate generated."),
             "token_usage": adk_result.get("token_usage", {"prompt": 0, "response": 0, "total": 0, "llm_calls": 0}),
             "costs": adk_result["costs"],
+            "live_debate": live_debate or {},
+            "live_debate_status": (live_debate or {}).get("status", "not_requested"),
+            "live_debate_error": (live_debate or {}).get("error", ""),
             "risk_factors": adk_result["risk_factors"],
             "status": "Pending Approval",
             "fallback_used": adk_result.get("fallback_used", False),
@@ -207,7 +373,20 @@ def resolve_shortage():
         }
         db.add_log(log_entry)
         
-        return jsonify({"success": True, "log": log_entry})
+        return jsonify({
+            "success": True,
+            "log": log_entry,
+            "live_usage": {
+                "llm_calls": (live_debate or {}).get("llm_calls", 0),
+                "prompt_tokens": (live_debate or {}).get("prompt_tokens", 0),
+                "response_tokens": (live_debate or {}).get("response_tokens", 0),
+                "total_tokens": (live_debate or {}).get("total_tokens", 0),
+                "estimated_api_cost": (live_debate or {}).get("estimated_api_cost", 0.0),
+                "status": (live_debate or {}).get("status", "not_requested"),
+                "error": (live_debate or {}).get("error", ""),
+                "model_used": (live_debate or {}).get("model_used", data.get("gemini_model", "gemini-1.5-flash"))
+            }
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -347,105 +526,26 @@ def generate_live_debate():
         context = data.get("context", {})
         rec_nurses = data.get("rec_nurses", [])
         rejected_candidates = data.get("rejected_candidates", [])
-        model_target = data.get("model", "gemini-1.5-flash")
-        # Keep the backend resilient if the frontend or saved state sends an
-        # unsupported/experimental model label. Unsupported model names cause
-        # Gemini calls to fail, which leaves token usage at zero.
-        supported_models = {"gemini-1.5-flash", "gemini-1.5-pro"}
-        if model_target not in supported_models:
-            model_target = "gemini-1.5-flash"
-        
-        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            return jsonify({"success": False, "error": "GOOGLE_API_KEY or GEMINI_API_KEY environment variable is not set."}), 500
-            
-        prompt = f"""
-        Hospital Scenario Context:
-        {json.dumps(context, indent=2)}
-        
-        Recommended Nurses by Cost & Fatigue-Aware Optimizer: {rec_nurses}
-        Rejected Candidates (Failed Compliance): {[r['id'] for r in rejected_candidates]}
-        
-        Please act as the following agents and generate a debate. 
-        Format your response EXACTLY like this (using these exact keys in JSON or split by section if string):
-        
-        PART 1: STAFFING VS COMPLIANCE
-        **Staffing Planner Agent**: [argument]
-        **Compliance Guard Agent**: [argument]
-        
-        PART 2: SAFETY VS COST
-        **Patient Safety Agent**: [argument]
-        **Financial Auditor Agent**: [argument]
-        
-        PART 3: FINAL ARBITER
-        **Final Arbiter Agent**: [decision]
-        """
-        
-        try:
-            import google.generativeai as genai
-            
-            # Use the same key resolved above.
-            genai.configure(api_key=api_key)
-            
-            model = genai.GenerativeModel(
-                model_name=model_target,
-                system_instruction="You are a clinical multi-agent orchestration system for hospital staffing."
-            )
-            response = model.generate_content(prompt)
-            response_text = response.text
-        except Exception as e:
-            return jsonify({"success": False, "error": f"Live API Error: {str(e)}"}), 500
-            
-        # Parse the response text into the 3 sections expected by the frontend
-        # For robustness, we'll just split it roughly based on the parts
-        staffing_part = ""
-        safety_part = ""
-        final_part = ""
-        
-        if "PART 2:" in response_text:
-            parts = response_text.split("PART 2:")
-            staffing_part = parts[0].replace("PART 1: STAFFING VS COMPLIANCE", "").strip()
-            if "PART 3:" in parts[1]:
-                subparts = parts[1].split("PART 3:")
-                safety_part = subparts[0].replace("SAFETY VS COST", "").strip()
-                final_part = subparts[1].replace("FINAL ARBITER", "").strip()
-            else:
-                safety_part = parts[1].strip()
-                final_part = "**Final Arbiter Agent**: Approved."
-        else:
-            # Fallback if the LLM ignores formatting
-            staffing_part = response_text
-            safety_part = "Live API formatting error."
-            final_part = "Live API formatting error."
-            
-        try:
-            pt = getattr(response.usage_metadata, "prompt_token_count", 0)
-            rt = getattr(response.usage_metadata, "candidates_token_count", 0)
-            tt = getattr(response.usage_metadata, "total_token_count", 0)
-            
-            if tt == 0:
-                pt = len(prompt) // 4
-                rt = len(response_text) // 4
-                tt = pt + rt
-        except Exception:
-            pt = len(prompt) // 4
-            rt = len(response_text) // 4
-            tt = pt + rt
-            
-        debate = {
-            "staffing_vs_compliance": staffing_part,
-            "safety_vs_cost": safety_part,
-            "final_arbiter": final_part,
-            "llm_calls": 1,
-            "prompt_tokens": pt,
-            "response_tokens": rt,
-            "total_tokens": tt,
-            "estimated_api_cost": (pt * 0.000000075) + (rt * 0.0000003),
-            "model_used": model_target
-        }
-        
-        return jsonify({"success": True, "debate": debate, "model_used": model_target})
-        
+        model_target = data.get("model") or os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+
+        debate = _call_live_gemini_debate(context, rec_nurses, rejected_candidates, model_target)
+        status_code = 200 if debate.get("success") else 500
+        return jsonify({
+            "success": bool(debate.get("success")),
+            "debate": debate,
+            "usage": {
+                "llm_calls": debate.get("llm_calls", 0),
+                "prompt_tokens": debate.get("prompt_tokens", 0),
+                "response_tokens": debate.get("response_tokens", 0),
+                "total_tokens": debate.get("total_tokens", 0),
+                "estimated_api_cost": debate.get("estimated_api_cost", 0.0),
+                "status": debate.get("status", "failed"),
+                "error": debate.get("error", ""),
+                "model_used": debate.get("model_used", model_target)
+            },
+            "model_used": debate.get("model_used", model_target),
+            "error": debate.get("error", "")
+        }), status_code
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
