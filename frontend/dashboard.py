@@ -2276,6 +2276,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
                 "visithour": hour_map.get(scen['shift_type'], 12),
                 "base_wait_time": float(st.session_state.get("pred_wait", 0)),
                 "enable_llm_debate": enable_llm,
+                "gemini_model": st.session_state.get("model_option", "gemini-1.5-flash"),
                 "preset_data": preset_info
             }
             
@@ -2287,10 +2288,44 @@ if workflow_page == "📋 Roster & Shortage Solver":
                     if result.get("success"):
                         st.session_state.pending_log = result["log"]
 
-                        # If Live Gemini mode is selected, explicitly call the live debate endpoint.
+                        # Preferred path: the backend now performs the Live Gemini call inside
+                        # /api/resolve_shortage when Live Gemini mode is enabled. Capture that
+                        # usage first so the sidebar token meter updates after rerun.
+                        resolved_live_usage = result.get("live_usage") or st.session_state.pending_log.get("live_debate") or {}
+                        backend_live_called = False
+                        if enable_llm and resolved_live_usage:
+                            usage_status = resolved_live_usage.get("status", "not_requested")
+                            live_usage = {
+                                "llm_calls": int(resolved_live_usage.get("llm_calls", 0) or 0),
+                                "prompt_tokens": int(resolved_live_usage.get("prompt_tokens", 0) or 0),
+                                "response_tokens": int(resolved_live_usage.get("response_tokens", 0) or 0),
+                                "total_tokens": int(resolved_live_usage.get("total_tokens", 0) or 0),
+                                "estimated_api_cost": float(resolved_live_usage.get("estimated_api_cost", 0.0) or 0.0),
+                                "status": usage_status,
+                                "error": resolved_live_usage.get("error", ""),
+                                "model_used": resolved_live_usage.get("model_used", st.session_state.get("model_option", "gemini-1.5-flash"))
+                            }
+                            st.session_state.live_gemini_usage = live_usage
+                            st.session_state.pending_log.setdefault("costs", {})
+                            for k in ["llm_calls", "prompt_tokens", "response_tokens", "total_tokens", "estimated_api_cost"]:
+                                st.session_state.pending_log["costs"][k] = live_usage[k]
+                            st.session_state.pending_log["token_usage"] = {
+                                "prompt": live_usage["prompt_tokens"],
+                                "response": live_usage["response_tokens"],
+                                "total": live_usage["total_tokens"],
+                                "llm_calls": live_usage["llm_calls"]
+                            }
+                            backend_live_called = usage_status in ("called", "failed")
+                            if usage_status == "called":
+                                st.caption(f"✅ Live Gemini debate called by backend. Tokens used: {live_usage['total_tokens']}")
+                            elif usage_status == "failed":
+                                st.warning(f"Live Gemini was requested but failed: {live_usage.get('error', 'Unknown error')}")
+
+                        # Fallback path: older backends may not call Gemini inside
+                        # /api/resolve_shortage. In that case, explicitly call the live debate endpoint.
                         # The shortage solver can still return a local-rule result, so this call is
                         # what actually causes Gemini token usage to appear in the UI.
-                        if enable_llm:
+                        if enable_llm and not backend_live_called:
                             try:
                                 live_payload = {
                                     "context": {
