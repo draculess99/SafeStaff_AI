@@ -1436,7 +1436,8 @@ with col_preset:
 </div>
 </div>
 </div>"""
-        st.markdown(preset_html, unsafe_allow_html=True)
+        with st.expander(f"📥 Loaded Demo Scenario Inputs — {selected_preset}", expanded=False):
+            st.markdown(preset_html, unsafe_allow_html=True)
 
 col_s1, col_s2, col_s3 = st.columns(3)
 with col_s1:
