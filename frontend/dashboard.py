@@ -434,6 +434,64 @@ st.markdown("""
         border-color: rgba(52, 211, 153, 0.30) !important;
         border-top-color: #34d399 !important;
     }
+
+    /* Selected-workflow content association.
+       The chosen tab sets CSS variables below; every subtitle/content marker then picks up
+       that active workflow accent so the section underneath clearly belongs to the selected tab. */
+    .workflow-content-rail {
+        margin: -8px 0 18px 0;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: linear-gradient(90deg, var(--workflow-accent-soft, rgba(59, 130, 246, 0.16)), rgba(15, 23, 42, 0.38));
+        border-left: 4px solid var(--workflow-accent, #60a5fa);
+        border-right: 1px solid var(--workflow-border, rgba(148, 163, 184, 0.18));
+        color: #e2e8f0;
+        box-shadow: 0 8px 22px rgba(2, 6, 23, 0.22);
+    }
+    .workflow-content-rail .rail-kicker {
+        font-size: 0.72rem;
+        letter-spacing: 0.075em;
+        text-transform: uppercase;
+        font-weight: 850;
+        color: var(--workflow-accent, #60a5fa);
+        margin-bottom: 3px;
+    }
+    .workflow-content-rail .rail-text {
+        font-size: 0.88rem;
+        font-weight: 650;
+        color: #cbd5e1;
+    }
+
+    /* Theme the visible subheaders under the active workflow. This avoids making the
+       entire page a rainbow, but gives each selected panel a matching visual language. */
+    .main .block-container h2,
+    .main .block-container h3 {
+        border-left: 4px solid var(--workflow-accent, #60a5fa) !important;
+        padding-left: 11px !important;
+        border-radius: 8px !important;
+        background: linear-gradient(90deg, var(--workflow-accent-soft, rgba(59, 130, 246, 0.13)), rgba(15, 23, 42, 0.0) 74%) !important;
+    }
+    .main .block-container h2::after,
+    .main .block-container h3::after {
+        content: "";
+        display: block;
+        width: 54px;
+        height: 2px;
+        margin-top: 7px;
+        border-radius: 999px;
+        background: var(--workflow-accent, #60a5fa);
+        opacity: 0.78;
+    }
+
+    /* Keep the main app title clean; the workflow association starts below the selector. */
+    .main .block-container h1 {
+        border-left: none !important;
+        padding-left: 0 !important;
+        background: transparent !important;
+    }
+    .main .block-container h1::after {
+        display: none !important;
+    }
     
     .main .block-container {
         padding-top: 2rem;
@@ -1369,45 +1427,77 @@ WORKFLOW_PANEL_META = {
         "class": "roster",
         "title": "📋 Roster & Shortage Solver",
         "help": "Primary operating panel for shift schedule, nurse registry, shortage resolution, approval, and roster updates.",
+        "accent": "#60a5fa",
+        "soft": "rgba(37, 99, 235, 0.16)",
+        "border": "rgba(96, 165, 250, 0.34)",
     },
     "⚡ System Stress Simulator": {
         "class": "stress",
         "title": "⚡ System Stress Test Simulator",
         "help": "Run surge, call-out, acuity, and operational pressure simulations against the current ER staffing state.",
+        "accent": "#fb923c",
+        "soft": "rgba(249, 115, 22, 0.15)",
+        "border": "rgba(251, 146, 60, 0.34)",
     },
     "🔍 Explainability & Token Logs": {
         "class": "explain",
         "title": "🔍 Explainability & Token Logs",
         "help": "Review why predictions, agents, and prompts made their decisions.",
+        "accent": "#22d3ee",
+        "soft": "rgba(34, 211, 238, 0.13)",
+        "border": "rgba(34, 211, 238, 0.30)",
     },
     "📝 Audit Log": {
         "class": "audit",
         "title": "📝 Audit Log",
         "help": "Track approvals, rejections, overrides, roster updates, and governance events.",
+        "accent": "#fbbf24",
+        "soft": "rgba(251, 191, 36, 0.13)",
+        "border": "rgba(251, 191, 36, 0.28)",
     },
     "🔬 Research & Validation": {
         "class": "research",
         "title": "🔬 Research & Validation",
         "help": "Show evidence, model framing, prototype limits, and validation notes for the capstone demo.",
+        "accent": "#7dd3fc",
+        "soft": "rgba(125, 211, 252, 0.12)",
+        "border": "rgba(125, 211, 252, 0.26)",
     },
     "🏛️ AI Committee Debate & Planner": {
         "class": "ai",
         "title": "🏛️ AI Committee Debate & Planner",
         "help": "Agentic AI review panel for staffing recommendations, veto logic, and human-in-the-loop decisions.",
+        "accent": "#a855f7",
+        "soft": "rgba(168, 85, 247, 0.15)",
+        "border": "rgba(168, 85, 247, 0.34)",
     },
     "📈 Model Performance": {
         "class": "performance",
         "title": "📈 Model Performance",
         "help": "Inspect model metrics, stability, and operational performance signals.",
+        "accent": "#34d399",
+        "soft": "rgba(52, 211, 153, 0.13)",
+        "border": "rgba(52, 211, 153, 0.30)",
     },
 }
 _panel = WORKFLOW_PANEL_META.get(workflow_page, WORKFLOW_PANEL_META["📋 Roster & Shortage Solver"])
 st.markdown(
     f"""
+    <style>
+        :root {{
+            --workflow-accent: {_panel['accent']};
+            --workflow-accent-soft: {_panel['soft']};
+            --workflow-border: {_panel['border']};
+        }}
+    </style>
     <div class="workflow-panel-banner workflow-panel-{_panel['class']}">
         <div class="panel-kicker">Selected workflow panel</div>
         <div class="panel-title">{_panel['title']}</div>
         <p class="panel-help">{_panel['help']}</p>
+    </div>
+    <div class="workflow-content-rail">
+        <div class="rail-kicker">Active content area</div>
+        <div class="rail-text">Everything below is now themed to the selected workflow: <strong>{_panel['title']}</strong>.</div>
     </div>
     """,
     unsafe_allow_html=True,
