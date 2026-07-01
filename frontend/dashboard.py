@@ -365,6 +365,75 @@ st.markdown("""
         color: #ffffff !important;
         font-weight: 800 !important;
     }
+
+
+    /* Selected workflow panel theme banner.
+       Tabs are navigation; the panel banner gives each selected section its own subtle theme. */
+    .workflow-panel-banner {
+        margin: 8px 0 22px 0;
+        padding: 16px 18px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-top: 3px solid rgba(96, 165, 250, 0.72);
+        box-shadow: 0 10px 28px rgba(2, 6, 23, 0.30);
+    }
+    .workflow-panel-banner .panel-kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.72rem;
+        color: #94a3b8;
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+    .workflow-panel-banner .panel-title {
+        font-size: 1.08rem;
+        line-height: 1.25rem;
+        color: #f8fafc;
+        font-weight: 850;
+        margin-bottom: 4px;
+    }
+    .workflow-panel-banner .panel-help {
+        font-size: 0.88rem;
+        color: #cbd5e1;
+        font-weight: 550;
+        margin: 0;
+    }
+    .workflow-panel-roster {
+        background: linear-gradient(135deg, rgba(30, 64, 175, 0.24), rgba(15, 23, 42, 0.78)) !important;
+        border-color: rgba(59, 130, 246, 0.42) !important;
+        border-top-color: #60a5fa !important;
+    }
+    .workflow-panel-stress {
+        background: linear-gradient(135deg, rgba(180, 83, 9, 0.20), rgba(15, 23, 42, 0.78)) !important;
+        border-color: rgba(251, 146, 60, 0.38) !important;
+        border-top-color: #f97316 !important;
+    }
+    .workflow-panel-explain {
+        background: linear-gradient(135deg, rgba(14, 116, 144, 0.18), rgba(15, 23, 42, 0.78)) !important;
+        border-color: rgba(34, 211, 238, 0.32) !important;
+        border-top-color: #22d3ee !important;
+    }
+    .workflow-panel-audit {
+        background: linear-gradient(135deg, rgba(120, 53, 15, 0.18), rgba(15, 23, 42, 0.78)) !important;
+        border-color: rgba(251, 191, 36, 0.30) !important;
+        border-top-color: #fbbf24 !important;
+    }
+    .workflow-panel-research {
+        background: linear-gradient(135deg, rgba(51, 65, 85, 0.30), rgba(15, 23, 42, 0.78)) !important;
+        border-color: rgba(125, 211, 252, 0.28) !important;
+        border-top-color: #7dd3fc !important;
+    }
+    .workflow-panel-ai {
+        background: linear-gradient(135deg, rgba(88, 28, 135, 0.24), rgba(15, 23, 42, 0.78)) !important;
+        border-color: rgba(168, 85, 247, 0.42) !important;
+        border-top-color: #a855f7 !important;
+    }
+    .workflow-panel-performance {
+        background: linear-gradient(135deg, rgba(5, 150, 105, 0.16), rgba(15, 23, 42, 0.78)) !important;
+        border-color: rgba(52, 211, 153, 0.30) !important;
+        border-top-color: #34d399 !important;
+    }
     
     .main .block-container {
         padding-top: 2rem;
@@ -1291,6 +1360,57 @@ workflow_page = st.radio(
     horizontal=True,
     key="workflow_page",
     label_visibility="collapsed",
+)
+
+
+# Selected workflow panel banner: makes the content area feel themed, not just the tab button.
+WORKFLOW_PANEL_META = {
+    "📋 Roster & Shortage Solver": {
+        "class": "roster",
+        "title": "📋 Roster & Shortage Solver",
+        "help": "Primary operating panel for shift schedule, nurse registry, shortage resolution, approval, and roster updates.",
+    },
+    "⚡ System Stress Simulator": {
+        "class": "stress",
+        "title": "⚡ System Stress Test Simulator",
+        "help": "Run surge, call-out, acuity, and operational pressure simulations against the current ER staffing state.",
+    },
+    "🔍 Explainability & Token Logs": {
+        "class": "explain",
+        "title": "🔍 Explainability & Token Logs",
+        "help": "Review why predictions, agents, and prompts made their decisions.",
+    },
+    "📝 Audit Log": {
+        "class": "audit",
+        "title": "📝 Audit Log",
+        "help": "Track approvals, rejections, overrides, roster updates, and governance events.",
+    },
+    "🔬 Research & Validation": {
+        "class": "research",
+        "title": "🔬 Research & Validation",
+        "help": "Show evidence, model framing, prototype limits, and validation notes for the capstone demo.",
+    },
+    "🏛️ AI Committee Debate & Planner": {
+        "class": "ai",
+        "title": "🏛️ AI Committee Debate & Planner",
+        "help": "Agentic AI review panel for staffing recommendations, veto logic, and human-in-the-loop decisions.",
+    },
+    "📈 Model Performance": {
+        "class": "performance",
+        "title": "📈 Model Performance",
+        "help": "Inspect model metrics, stability, and operational performance signals.",
+    },
+}
+_panel = WORKFLOW_PANEL_META.get(workflow_page, WORKFLOW_PANEL_META["📋 Roster & Shortage Solver"])
+st.markdown(
+    f"""
+    <div class="workflow-panel-banner workflow-panel-{_panel['class']}">
+        <div class="panel-kicker">Selected workflow panel</div>
+        <div class="panel-title">{_panel['title']}</div>
+        <p class="panel-help">{_panel['help']}</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 # Tab 1: Roster and Shortage Solver
