@@ -1012,7 +1012,7 @@ def calculate_local_drivers(beds, month, day, hour, acuity, ratio, spec):
 # Sidebar Controls
 st.sidebar.markdown("<h2 style='text-align: center; color: #818cf8;'>⚙️ Control Tower</h2>", unsafe_allow_html=True)
 
-if st.sidebar.button("🔄 Reset Database to Mock Values", use_container_width=True, help="Resets all shifts, logs, and nurse states for a fresh demo run."):
+if st.sidebar.button("🔄 Restore Demo Nurses & Shift Schedule", use_container_width=True, help="Restores the original mock nurse registry, shift schedule, memory, logs, and audit history for a fresh demo run."):
     try:
         res = requests.post(f"{API_BASE_URL}/api/reset")
         st.session_state.evidence = {}
@@ -1025,7 +1025,9 @@ if st.sidebar.button("🔄 Reset Database to Mock Values", use_container_width=T
         clear_dashboard_bootstrap_cache()
         st.rerun()
     except Exception as e:
-        st.sidebar.error(f"Failed to reset database: {e}")
+        st.sidebar.error(f"Failed to restore demo data: {e}")
+
+st.sidebar.caption("Resets the nurse registry, shift schedule, memory, logs, and audit history back to the original mock demo state.")
 
 mlops_expander = st.sidebar.expander("🤖 MLOps Pipeline Controls", expanded=False)
 
