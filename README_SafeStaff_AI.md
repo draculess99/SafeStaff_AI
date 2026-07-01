@@ -1,54 +1,131 @@
-# SafeStaff AI: ER Wait-Time Forecasting and Nurse-Staffing Decision Support
+# SafeStaff AI — ER Wait-Time Forecasting and Nurse-Staffing Decision Support
 
-SafeStaff AI is an agentic decision-support prototype for emergency-room operations. It forecasts ER wait-time risk with XGBoost, combines that forecast with operational pressure signals, and produces an explainable nurse-staffing recommendation.
+SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. It combines an XGBoost ER wait-time forecast, operational pressure modules, a nurse registry, a shift schedule, a multi-agent shortage solver, human approval, and an audit log into one Streamlit control-tower workflow.
 
-The project is designed for a GitHub/Kaggle-style capstone submission: it demonstrates machine-learning forecasting, operational decision support, persistent memory, auditability, human-in-the-loop review, and a Streamlit dashboard.
+> **Prototype notice:** SafeStaff AI is a demonstration and decision-support prototype. It is not clinically validated and must not be used for real patient-care or staffing decisions without hospital governance, validation, security review, and human supervision.
 
 ---
 
 ## Project subtitle
 
-**From ER wait-time forecasts to nurse-staffing decisions: an agentic AI decision-support system.**
+**From ER wait-time forecasts to nurse-staffing decisions: an agentic AI control tower for hospital operations.**
 
 ---
 
 ## What problem does this solve?
 
-Emergency departments often face unpredictable patient arrivals, long wait times, bed boarding, staff fatigue, and staffing shortages. A static roster does not always respond well to changing operational pressure.
+Emergency departments face changing demand: arrival surges, boarding delays, nurse fatigue, flu activity, staff call-outs, low-acuity bottlenecks, and limited specialist availability. A static staffing plan can miss these fast-moving pressures.
 
 SafeStaff AI addresses two connected problems:
 
 1. **ER wait-time forecasting**  
-   The XGBoost model predicts ER wait-time risk from operational features such as patient urgency, hospital size, staffing ratio, time of day, shift type, seasonality, and historical wait patterns.
+   An XGBoost model forecasts ER wait-time risk from structured operational features.
 
 2. **Nurse-staffing decision support**  
-   The staffing engine converts the wait-time forecast, operational pressure modules, and memory of similar prior ER states into an explainable additional-nurse recommendation.
+   A staffing workflow converts the wait-time prediction and operational pressure signals into an explainable additional-nurse recommendation.
 
-The system does **not** claim to replace clinical judgment. It is a decision-support prototype intended to make staffing risk more visible, explainable, and auditable.
+The app is designed to show a complete decision path:
+
+```text
+ER scenario inputs
+    ↓
+XGBoost wait-time forecast
+    ↓
+Operational pressure engine
+    ↓
+Pressure-based staffing adjustment
+    ↓
+Multi-agent shortage solver
+    ↓
+Human approval / rejection / override
+    ↓
+Roster update + audit log
+```
+
+---
+
+## Screenshot checklist for the README
+
+Add screenshots in this order so reviewers can understand the app quickly:
+
+1. **Control Tower overview** — ER status, pipeline status, main workflow tab.
+2. **Loaded demo scenario inputs** — flu surge, boarding, occupancy, call-outs, pressure inputs.
+3. **Shift Schedule & Status** — shows the active schedule before/after a roster update.
+4. **Nurse Database Registry summary** — shows nurses loaded and registry expander.
+5. **Step 1: ER Wait-Time Risk Assessment** — XGBoost wait prediction and ER operational pressure.
+6. **Step 2: Pressure-Based Staffing Adjustment** — base staffing, operational adjustment, final recommendation.
+7. **Multi-Agent Workflow Execution Progress** — planner, compliance, safety, finance, arbiter, human approval.
+8. **Final Decision Executive Summary** — approved/rejected decision and roster/audit result.
+9. **Human Decision Audit Log** — persistent audit record.
+10. **Token Usage / Low-Token Mode** — local deterministic mode vs Live Gemini token tracking.
+
+Suggested README image folder:
+
+```text
+assets/screenshots/
+```
+
+Suggested image names:
+
+```text
+assets/screenshots/01-control-tower-overview.png
+assets/screenshots/02-demo-scenario-inputs.png
+assets/screenshots/03-shift-schedule-status.png
+assets/screenshots/04-nurse-registry-summary.png
+assets/screenshots/05-step1-wait-time-risk.png
+assets/screenshots/06-step2-pressure-adjustment.png
+assets/screenshots/07-agent-workflow-progress.png
+assets/screenshots/08-final-decision-summary.png
+assets/screenshots/09-audit-log.png
+assets/screenshots/10-token-usage-mode.png
+```
+
+Example markdown:
+
+```md
+![SafeStaff AI Control Tower](assets/screenshots/01-control-tower-overview.png)
+```
 
 ---
 
 ## Core workflow
 
-```text
-Current ER scenario
-        ↓
-XGBoost wait-time prediction
-        ↓
-Baseline comparison and model explainability
-        ↓
-Operational pressure modules
-        ↓
-Research-adjusted staffing rationale
-        ↓
-Persistent memory lookup for similar prior ER states
-        ↓
-Final nurse-staffing recommendation
-        ↓
-Human supervisor approval / override
-        ↓
-Audit log
-```
+### 1. Roster & Shortage Solver
+
+The primary workflow tab displays the operational staffing flow:
+
+- Shift Schedule & Status
+- Nurse Database Registry summary and expandable registry table
+- 3-Step Shortage Resolution Workflow
+- ER wait-time risk assessment
+- Pressure-based staffing adjustment
+- Multi-agent shortage solver
+- Human approval and governance
+- Final decision executive summary
+
+### 2. System Stress Simulator
+
+The simulator allows testing different ER pressure scenarios, such as flu surge, high boarding, fast-track closure, nurse call-outs, and high occupancy.
+
+### 3. Explainability & Token Logs
+
+This tab surfaces model reasoning, token usage, local-vs-live mode, and evidence for why recommendations changed.
+
+### 4. Audit Log
+
+The audit log records approvals, rejections, overrides, staffing recommendations, token mode, and governance status.
+
+### 5. Research & Validation
+
+This tab documents prototype validation, research modules, and operational pressure source checks.
+
+### 6. AI Committee Debate & Planner
+
+This tab shows the agentic reasoning layer, including planner, compliance, patient safety, finance, and final arbiter logic.
+
+### 7. Model Performance
+
+This tab shows XGBoost performance, baseline comparison, feature importance, and model evaluation results.
 
 ---
 
@@ -56,46 +133,43 @@ Audit log
 
 ```mermaid
 flowchart TD
-    A[ER Operational Inputs] --> B[XGBoost Wait-Time Forecast]
-    A --> C[Operational Pressure Modules]
+    A[ER Scenario Inputs] --> B[XGBoost Wait-Time Forecast]
+    A --> C[Operational Pressure Engine]
 
-    C --> C1[Arrival Surge Pressure]
-    C --> C2[Bed Boarding Pressure]
-    C --> C3[Acuity / ESI Pressure]
-    C --> C4[Nurse Fatigue Pressure]
-    C --> C5[Fast-Track / Low-Acuity Pressure]
-    C --> C6[Specialist Availability Pressure]
+    C --> C1[Arrival Surge]
+    C --> C2[Bed Boarding]
+    C --> C3[Acuity / ESI]
+    C --> C4[Nurse Fatigue]
+    C --> C5[Fast-Track Bottleneck]
+    C --> C6[Staff Call-Outs]
 
-    B --> D[Staffing Decision Engine]
+    B --> D[Pressure-Based Staffing Adjustment]
     C --> D
 
-    M1[Current Inflow Memory State<br/>database/inflow_memory_state.json] --> D
-    M2[Historical Memory Events<br/>database/inflow_memory_history.json] --> H[Similar Prior ER State Retrieval]
-    H --> D
+    D --> E[Multi-Agent Shortage Solver]
+    E --> E1[Staffing Planner]
+    E --> E2[Compliance Guard]
+    E --> E3[Patient Safety Agent]
+    E --> E4[Financial Auditor]
+    E --> E5[Final Arbiter]
 
-    D --> E[Final Nurse Staffing Recommendation]
-    D --> F[Human-Readable Explanation]
-    D --> G[Audit Log / Decision Record]
+    E --> F[Human Approval / Reject / Override]
+    F --> G[Roster Update]
+    F --> H[Audit Log]
 
-    E --> I[Dashboard Output]
-    F --> I
+    H --> I[Dashboard Evidence]
     G --> I
-
-    D --> M1
-    D --> M2
 ```
-
-The system combines a machine-learning wait-time forecast with operational pressure modules and persistent memory. XGBoost predicts ER wait-time risk, while the staffing decision engine converts the forecast, pressure signals, and similar prior memory events into an explainable nurse-staffing recommendation. Current memory stores the latest operational state, while historical memory stores prior ER events for similar-case retrieval.
 
 ---
 
 ## Key features
 
-### 1. XGBoost ER wait-time forecasting
+### XGBoost ER wait-time forecasting
 
-The model predicts ER patient wait time from structured operational features.
+The XGBoost model produces the base wait-time forecast. The model performance tab compares XGBoost against a naive mean baseline.
 
-Current saved model metrics from `backend/model_metrics.json`:
+Example saved model metrics from `backend/model_metrics.json`:
 
 | Metric | XGBoost | Naive Mean Baseline |
 |---|---:|---:|
@@ -103,174 +177,127 @@ Current saved model metrics from `backend/model_metrics.json`:
 | RMSE | 26.18 minutes | 68.21 minutes |
 | R² | 0.853 | -0.0002 |
 
-The baseline is a **naive mean baseline**. It predicts the training-set average wait time for every case. XGBoost significantly outperforms this baseline, showing that the model is learning useful operational patterns rather than simply guessing the average.
+The baseline predicts the average wait time for every case. XGBoost beating that baseline shows the model is learning useful operational patterns.
 
----
+### Operational Pressure Engine
 
-### 2. Nurse-staffing recommendation engine
+The operational pressure engine is loaded at startup and applies baseline pressure modules to adjust the staffing recommendation.
 
-The staffing layer converts forecasted wait-time risk into an additional-nurse recommendation.
+It considers signals such as:
 
-It considers:
+- arrival surge multiplier
+- bed boarding count and boarding hours
+- ED occupancy
+- patient acuity
+- nurse call-out rate
+- fast-track status and fast-track queue
+- fatigue and maximum-hour constraints
+- specialist availability
 
-- XGBoost predicted wait time
-- Base staffing risk
-- Arrival surge pressure
-- ESI / acuity pressure
-- Bed boarding pressure
-- Fast-track / low-acuity bottlenecks
-- Nurse fatigue pressure
-- Nurse call-out pressure
-- Specialist availability
-- Operational risk level
-- Human supervisor approval requirements
-
-Important distinction:
-
-> XGBoost forecasts ER wait time. The staffing engine uses that forecast plus operational pressure signals to recommend additional nurse staffing.
-
----
-
-### 3. Research / operational pressure modules
-
-The app includes operational modules that add context beyond the base ML forecast:
-
-- `arrival_surge_pressure.csv`
-- `bed_boarding_pressure.csv`
-- `esi_seasonal_patterns.csv`
-- `fast_track_flow.csv`
-- intervention-cost catalog
-- data-source registry
-
-These modules help explain why staffing may need to be maintained, increased, or escalated to supervisor review.
-
----
-
-### 4. Persistent inflow memory
-
-SafeStaff AI includes persistent memory for ER inflow and staffing context.
-
-Current memory state:
+The sidebar uses a readiness indicator:
 
 ```text
-database/inflow_memory_state.json
+OPERATIONAL PRESSURE ENGINE
+● READY
+Baseline pressure inputs loaded
+Recommendation adjustment enabled
 ```
 
-Append-only memory history:
+When a demo preset is loaded, the app shows:
 
 ```text
-database/inflow_memory_history.json
+OPERATIONAL PRESSURE ENGINE
+● PRESET LOADED
+[preset name]
+Recommendation adjustment enabled
 ```
 
-The current memory file stores the latest operational memory state. The history file stores prior memory events so the system can retrieve similar ER states later.
+### Pressure-based staffing adjustment
 
-The memory layer supports questions such as:
-
-- Have we seen a similar ER pressure pattern before?
-- Did a previous similar event underpredict load?
-- Did similar prior conditions require additional staffing?
-- Does historical context support the current recommendation?
-
-In this version, memory is used as a **decision-support and explainability layer**. It retrieves similar prior ER states and displays a memory insight. It does not directly override the final nurse-count calculation.
-
----
-
-### 5. Similar prior ER memory events
-
-The system can search prior memory history for events similar to the current ER state.
-
-Similarity can consider:
-
-- arrival pressure
-- boarding pressure
-- fatigue pressure
-- acuity pressure
-- ED occupancy percentage
-- waiting-room count
-- forecasted load
-- prior staffing recommendation
-
-Example explanation:
+SafeStaff separates the raw wait-time prediction from the operational adjustment:
 
 ```text
-Memory insight: The system found similar prior ER states with high occupancy and critical arrival pressure. Those events support the current staffing recommendation.
+Base wait-time staffing: +N
+Operational adjustment: +M
+Final recommendation: +K
 ```
 
-If no similar history exists, the system explains that the recommendation is based on the current forecast and operational pressure signals.
+This makes the recommendation easier to defend because users can see whether the nurse count came from the model, the operational rules, or both.
 
----
+### Multi-agent shortage solver
 
-### 6. Explainability dashboard
+The shortage solver represents a committee-style staffing workflow:
 
-The Streamlit dashboard includes:
+- **Staffing Planner Agent** — generates the initial staffing plan.
+- **Compliance Guard Agent** — checks constraints such as safe hours and approval rules.
+- **Patient Safety Agent** — evaluates risk escalation and safe coverage.
+- **Financial Auditor Agent** — estimates staffing cost impact.
+- **Final Arbiter Agent** — produces the final recommendation.
+- **Human Approval** — supervisor approves, rejects, or overrides.
 
-- XGBoost predicted wait time
-- Base staffing risk
-- Research-adjusted staffing rationale
-- Final recommended nurse count
-- Why the recommendation changed or was maintained
-- Baseline vs XGBoost comparison
-- Feature importance chart with readable feature names
-- Memory state
-- Recent inflow memory history
-- Similar prior ER memory events
-- Audit log
-- Research validation tab
-- AI committee debate / planner tab
-- MLOps-style retraining controls
+### Human-in-the-loop governance
 
----
+The app does not make autonomous clinical staffing decisions. High-risk recommendations are routed to a human approval step.
 
-### 7. Human-in-the-loop governance
+Supported actions:
 
-High-risk recommendations are routed through a supervisor approval workflow. The app includes approve/reject actions and audit logging so staffing decisions are traceable.
+- approve recommendation
+- reject recommendation
+- override recommendation
+- save roster update
+- record audit log
 
-This is important because the project is not designed to make autonomous clinical staffing decisions. It is designed to support human decision-makers.
+### Audit trail
 
----
+The audit log records decision traces such as:
 
-## Dashboard tabs
+- additional nurses needed
+- base staffing need
+- final recommendation
+- active agents
+- decision status
+- approval requirement
+- human decision
+- token mode
+- cost estimate
 
-The app dashboard includes the following major areas:
+This supports governance, traceability, and demo explainability.
 
-1. **Roster & Shortage Solver**  
-   Main operational screen for nurse registry, schedule view, shortage resolution, memory visibility, and staffing recommendation.
+### Local Expert System vs Live Gemini mode
 
-2. **System Stress Simulator**  
-   Demo scenarios for testing pressure conditions and stress cases.
+SafeStaff supports two reasoning modes:
 
-3. **Explainability & Token Logs**  
-   Displays reasoning, local fallback behavior, and token/cost transparency.
+#### Local / low-token mode
 
-4. **Audit Log**  
-   Tracks approvals, rejections, and decision events.
+```text
+Tokens: 0
+Local deterministic expert system
+No paid external LLM tokens used
+```
 
-5. **Research & Validation**  
-   Shows research module checks, smoke tests, data-source notes, and validation utilities.
+This mode is reliable for demos because it does not depend on API quota.
 
-6. **AI Committee Debate & Planner**  
-   Displays the agentic reasoning layer, intervention planning, and committee-style recommendation discussion.
+#### Live Gemini API mode
 
-7. **Model Performance**  
-   Shows XGBoost metrics, baseline comparison, feature importances, and model evaluation details.
+```text
+Gemini LLM Calls: 1
+Tokens: [tracked count]
+Estimated Cost: [estimated cost]
+Model Used: [successful model]
+```
+
+Live mode adds richer narrative reasoning and token/cost transparency. If quota fails, the app falls back to local deterministic mode and shows the error clearly.
 
 ---
 
 ## Data and privacy statement
 
-This project uses simulated, synthetic, and Kaggle-derived proxy data for demonstration.
+This project uses simulated, synthetic, and Kaggle-derived proxy data for demonstration. No real patient records are required, and no PHI should be committed to the repository.
 
-No real patient records are required. No PHI should be committed to the repository.
-
-Relevant data files are stored under:
+Key data files:
 
 ```text
-database/
-```
-
-Key files include:
-
-```text
+database/db.json
 database/er_wait_time.csv
 database/ER Wait Time Dataset.csv
 database/arrival_surge_pressure.csv
@@ -285,49 +312,41 @@ database/data_sources.json
 ## Repository structure
 
 ```text
-nurse_staffing_system/
-├── app.py                          # Starts Flask backend and Streamlit frontend
+SafeStaff_AI/
+├── server.py                       # Optional root Gunicorn entry point
 ├── requirements.txt                # Python dependencies
 ├── backend/
 │   ├── server.py                   # Flask API routes
-│   ├── model.py                    # XGBoost training/evaluation logic
+│   ├── model.py                    # XGBoost model logic
 │   ├── xgboost_model.pkl           # Saved trained model
-│   ├── model_metrics.json          # Saved model and baseline metrics
-│   ├── inflow_memory.py            # Current memory, history, and similar-event retrieval
+│   ├── model_metrics.json          # Model and baseline metrics
+│   ├── inflow_memory.py            # Memory and similar-event retrieval
 │   ├── research_modules.py         # Operational pressure modules
-│   ├── intervention_costing.py     # Cost-impact calculations
-│   ├── agents/
-│   │   └── adk_agents.py           # Agentic debate/planner logic
-│   └── test_*.py                   # Targeted backend tests
+│   ├── intervention_costing.py     # Cost calculations
+│   └── agents/
+│       └── adk_agents.py           # Agentic debate/planner logic
 ├── frontend/
 │   └── dashboard.py                # Streamlit dashboard
 ├── database/
-│   ├── db.json                     # Mock operational database and audit state
-│   ├── inflow_memory_state.json    # Latest current inflow memory
-│   ├── inflow_memory_history.json  # Append-only memory history
-│   └── *.csv / *.json              # Simulation and research-module data
+│   ├── db.json                     # Mock nurse registry, schedule, logs, audit state
+│   ├── inflow_memory_state.json    # Current inflow memory
+│   ├── inflow_memory_history.json  # Historical memory events
+│   └── *.csv / *.json              # Demo and research-module data
 └── scripts/
     └── build_research_modules_from_kaggle.py
 ```
 
 ---
 
-## Installation
-
-### 1. Clone the repository
+## Local installation
 
 ```bash
 git clone <your-repo-url>
-cd nurse_staffing_system
-```
-
-### 2. Create a virtual environment
-
-```bash
+cd SafeStaff_AI
 python -m venv .venv
 ```
 
-Activate it:
+Activate the environment.
 
 Windows:
 
@@ -341,7 +360,7 @@ macOS/Linux:
 source .venv/bin/activate
 ```
 
-### 3. Install dependencies
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -349,36 +368,87 @@ pip install -r requirements.txt
 
 ---
 
-## How to run the app
+## Run locally
 
-From the project root:
+Backend:
 
 ```bash
-python app.py
+python server.py
 ```
 
-This starts:
+or:
 
-- Flask API backend: `http://127.0.0.1:5000`
-- Streamlit dashboard: `http://localhost:8501`
+```bash
+gunicorn backend.server:app --bind 0.0.0.0:5000 --timeout 180 --workers 1
+```
 
-Open the Streamlit URL in your browser.
+Frontend:
+
+```bash
+streamlit run frontend/dashboard.py --server.address 0.0.0.0 --server.port 8501
+```
+
+Set the frontend backend URL if needed:
+
+```bash
+API_BASE_URL=http://localhost:5000
+BACKEND_URL=http://localhost:5000
+```
+
+---
+
+## Railway deployment
+
+Use two Railway services.
+
+### Backend service
+
+Custom start command:
+
+```bash
+sh -c "gunicorn backend.server:app --bind 0.0.0.0:$PORT --timeout 180 --workers 1"
+```
+
+Set variables if using Live Gemini mode:
+
+```text
+GOOGLE_API_KEY=<your-key>
+GEMINI_API_KEY=<your-key>
+GOOGLE_GENAI_API_KEY=<your-key>
+```
+
+Only one valid Gemini key is required, but the app checks multiple common variable names.
+
+### Frontend service
+
+Custom start command:
+
+```bash
+sh -c "streamlit run frontend/dashboard.py --server.address 0.0.0.0 --server.port $PORT"
+```
+
+Frontend variables:
+
+```text
+API_BASE_URL=https://YOUR-BACKEND-RAILWAY-URL.up.railway.app
+BACKEND_URL=https://YOUR-BACKEND-RAILWAY-URL.up.railway.app
+```
 
 ---
 
 ## Useful API endpoints
 
-The backend exposes endpoints such as:
-
 ```text
-GET  /health
+GET  /api/health
 GET  /api/nurses
 GET  /api/schedule
+POST /api/reset
 POST /api/predict_wait
 POST /api/resolve_shortage
 POST /api/approve_resolution
 POST /api/reject_resolution
 GET  /api/audit_logs
+GET  /api/model-evaluation
 POST /api/train
 POST /api/retrain_and_reload
 GET  /api/inflow-memory
@@ -386,40 +456,50 @@ POST /api/inflow-forecast
 POST /api/update_memory_on_save
 GET  /api/inflow-history
 POST /api/find_similar_history
-GET  /api/model-evaluation
+GET  /api/gemini-config
+GET  /api/gemini-models
 ```
+
+Quick backend checks:
+
+```bash
+curl https://YOUR-BACKEND-URL.up.railway.app/api/health
+curl https://YOUR-BACKEND-URL.up.railway.app/api/nurses
+curl https://YOUR-BACKEND-URL.up.railway.app/api/schedule
+```
+
+---
+
+## Demo walkthrough
+
+1. Open the Streamlit dashboard.
+2. Confirm pipeline status is green.
+3. Confirm the Operational Pressure Engine is ready.
+4. Load a demo scenario such as **Winter Flu Surge + Staff Call-Out**.
+5. Review the demo scenario inputs and operational pressures.
+6. Run **Step 1: ER Wait-Time Risk Assessment**.
+7. Review XGBoost wait-time prediction and ER operational pressure.
+8. Review **Step 2: Pressure-Based Staffing Adjustment**.
+9. Launch the **Multi-Agent Shortage Solver**.
+10. Approve, reject, or override the staffing recommendation.
+11. Confirm the shift schedule updates when approved.
+12. Open the Audit Log and verify the decision was recorded.
+13. Optionally switch between Local Expert System and Live Gemini mode.
 
 ---
 
 ## Testing
 
-Run targeted validation tests from the project root.
-
-Research-module validation:
+Targeted tests:
 
 ```bash
 python backend/test_research_modules.py
-```
-
-Smoke test:
-
-```bash
 python backend/smoke_test_app.py
-```
-
-Memory persistence test:
-
-```bash
 python backend/test_inflow_memory_persistence.py
-```
-
-Model tests:
-
-```bash
 python backend/test_models.py
 ```
 
-You can also run pytest if installed:
+Pytest examples:
 
 ```bash
 pytest backend/test_inflow_memory_persistence.py -q
@@ -429,153 +509,45 @@ pytest backend/test_research_modules.py -q
 
 ---
 
-## Demo walkthrough
-
-1. Start the app with:
-
-   ```bash
-   python app.py
-   ```
-
-2. Open:
-
-   ```text
-   http://localhost:8501
-   ```
-
-3. Load or adjust an ER scenario.
-
-4. Review the XGBoost predicted wait time.
-
-5. Review the base staffing risk and research-adjusted staffing rationale.
-
-6. Check whether the final nurse recommendation was changed or maintained.
-
-7. Open the memory sections:
-
-   - Current inflow memory state
-   - Recent inflow memory history
-   - Similar prior ER memory events
-
-8. Review the model performance tab:
-
-   - XGBoost metrics
-   - Naive mean baseline comparison
-   - Feature importance chart
-
-9. Open the audit log to confirm decisions are traceable.
-
-10. Use the supervisor approval / override workflow for high-risk decisions.
-
----
-
 ## What makes this agentic?
 
-This project is agentic because it does more than return a single model prediction.
-
-It performs a multi-step decision workflow:
+SafeStaff AI is agentic because it performs a multi-step decision workflow instead of returning a single prediction:
 
 1. Reads the current ER scenario.
-2. Runs an ML forecast.
-3. Evaluates operational pressure modules.
-4. Retrieves similar prior memory events.
-5. Generates an explainable staffing recommendation.
-6. Produces committee-style reasoning and intervention planning.
-7. Routes high-risk decisions to human approval.
-8. Saves decision traces to memory and audit logs.
-
----
-
-## Model explainability
-
-The app includes feature importance reporting so users can see which operational factors influenced the XGBoost model most strongly.
-
-Feature importance explains model behavior. It does not prove medical causation.
-
-The model performance tab also includes a baseline comparison to show that XGBoost beats a simple non-ML benchmark.
+2. Runs an ML wait-time forecast.
+3. Applies operational pressure modules.
+4. Converts pressure into staffing adjustment.
+5. Runs agent-style planning, compliance, safety, finance, and arbiter logic.
+6. Routes high-risk decisions to human approval.
+7. Saves schedule, nurse-hour, and audit updates.
+8. Provides explainability and token/cost transparency.
 
 ---
 
 ## Safety and limitations
 
-SafeStaff AI is a prototype.
+SafeStaff AI is a prototype and should not be used for real clinical staffing decisions without:
 
-It should not be used for real clinical staffing decisions without:
-
-- real hospital validation
-- clinical governance
-- data-quality checks
-- bias and safety review
-- human supervisor control
+- clinical validation
+- real hospital data review
+- governance approval
+- bias and safety testing
 - monitoring for model drift
-- integration with hospital staffing policies
+- security and privacy review
+- integration with hospital staffing policy
+- human supervisor accountability
 
 Current limitations:
 
 - Data is simulated or Kaggle-derived proxy data.
 - The model is not clinically validated.
-- Memory supports explanation and decision context but does not override the nurse-count calculation in this version.
 - Operational modules are prototype rules and lookup tables.
-- Cost calculations are simplified for demonstration.
-- The app is designed for capstone/demo purposes, not production hospital deployment.
+- Nurse-cost calculations are simplified.
+- Gemini API usage depends on quota and API availability.
+- The app is built for capstone/demo evaluation, not production deployment.
 
 ---
 
-## GitHub submission checklist
+## One-line summary
 
-Before submitting, confirm:
-
-- [ ] `README.md` is present and accurate.
-- [ ] `requirements.txt` is present.
-- [ ] App starts with `python app.py`.
-- [ ] No `.env` secrets are committed.
-- [ ] No real patient data is committed.
-- [ ] `__pycache__`, `.pytest_cache`, and local junk files are removed or ignored.
-- [ ] Architecture Mermaid diagram renders correctly on GitHub.
-- [ ] Dashboard screenshots are added if desired.
-- [ ] Baseline comparison is visible in the model performance tab.
-- [ ] Feature importance chart uses readable names.
-- [ ] Memory history and similar prior events are visible.
-- [ ] The final demo story is clear: forecast wait time, explain risk, recommend staffing.
-
----
-
-## Recommended `.gitignore`
-
-```gitignore
-__pycache__/
-*.pyc
-.pytest_cache/
-.venv/
-.env
-.DS_Store
-catboost_info/
-*.log
-```
-
-Do not commit API keys, credentials, or private environment variables.
-
----
-
-## Suggested screenshots
-
-For a stronger GitHub submission, add screenshots under a `screenshots/` folder:
-
-```text
-screenshots/dashboard_main.png
-screenshots/staffing_rationale.png
-screenshots/model_performance.png
-screenshots/memory_history.png
-screenshots/audit_log.png
-```
-
-Then link them in this README.
-
----
-
-## Final project summary
-
-SafeStaff AI demonstrates how machine learning, operational research modules, persistent memory, and agentic reasoning can be combined into a practical ER staffing decision-support workflow.
-
-The system forecasts ER wait-time risk, compares the model against a baseline, explains operational pressure, retrieves similar historical memory events, recommends additional nurse staffing, and preserves decisions through audit logs and human-in-the-loop approval.
-
+**SafeStaff AI turns ER wait-time forecasts into explainable nurse-staffing decisions by combining XGBoost, operational pressure modules, agent-style reasoning, human approval, and audit logging.**
