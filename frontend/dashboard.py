@@ -1739,7 +1739,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
     
     # Step 1
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color: #60a5fa; border-bottom: 2px solid rgba(96, 165, 250, 0.3); padding-bottom: 8px; margin-top: 10px;'>1️⃣ Step 1: ER Wait-Time Risk Assessment</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #60a5fa; border-bottom: 2px solid rgba(96, 165, 250, 0.3); padding-bottom: 8px; margin-top: 10px; font-size: 1.45rem; line-height: 1.25; font-weight: 700;'>1️⃣ Step 1: ER Wait-Time Risk Assessment</h3>", unsafe_allow_html=True)
     st.caption("Workflow Step 1 of 3: Forecast ER wait time and identify staffing shortages based on operational pressure.")
     st.markdown(
         """
@@ -2037,7 +2037,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
     # Step 2
     if st.session_state.get("risk_assessed") and st.session_state.get("estimated_needed", 0) > 0:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.markdown("<h3 style='color: #a78bfa; border-bottom: 2px solid rgba(167, 139, 250, 0.3); padding-bottom: 8px; margin-top: 10px;'>2️⃣ Step 2: Staffing Action Plan</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #a78bfa; border-bottom: 2px solid rgba(167, 139, 250, 0.3); padding-bottom: 8px; margin-top: 10px; font-size: 1.45rem; line-height: 1.25; font-weight: 700;'>2️⃣ Step 2: Staffing Action Plan</h3>", unsafe_allow_html=True)
         st.caption("Workflow Step 2 of 3: Generate an optimized roster change to resolve the detected shortage.")
         st.markdown("""<div style="background-color: #102A43; border: 1px solid #2563EB; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; color: #F8FAFC; line-height: 1.6; font-size: 0.95rem;"><p style="margin-top: 0; margin-bottom: 0; color: #FFFFFF;">Translate risk into an operational roster change. The ADK will find the best nurses to fill the gap.</p></div>""", unsafe_allow_html=True)
         
@@ -2173,7 +2173,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
     # Step 3
     if st.session_state.get("pending_log"):
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.markdown("<h3 style='color: #34d399; border-bottom: 2px solid rgba(52, 211, 153, 0.3); padding-bottom: 8px; margin-top: 10px;'>3️⃣ Step 3: Human Approval & Governance</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #34d399; border-bottom: 2px solid rgba(52, 211, 153, 0.3); padding-bottom: 8px; margin-top: 10px; font-size: 1.45rem; line-height: 1.25; font-weight: 700;'>3️⃣ Step 3: Human Approval & Governance</h3>", unsafe_allow_html=True)
         st.caption("Workflow Step 3 of 3: Review the AI committee's rationale, check compliance, and submit the final roster update.")
         
         # Audit Status Badge
