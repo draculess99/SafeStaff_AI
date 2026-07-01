@@ -2,7 +2,6 @@ import os
 import json
 import uuid
 import datetime
-import requests
 from flask import Flask, jsonify, request
 from database.database import JSONDatabase
 from backend.model import predict_wait_time, train_model, CSV_PATH, MODEL_PATH, load_model_payload, clear_model_payload_cache
@@ -67,154 +66,83 @@ def _parse_live_debate_text(response_text):
     return staffing_part, safety_part, final_part
 
 def _call_live_gemini_debate(context, rec_nurses, rejected_candidates, model_target=None):
-    """Call Gemini through the public REST API and return normalized debate/token data.
+    """Call Gemini once and return a normalized debate/token payload.
 
-    This version is intentionally independent of the google-generativeai Python
-    package so Railway package/import issues do not silently force token usage
-    to remain at zero. It tries the requested model first, then safe fallbacks.
-    If the backend API key is missing/invalid or every model call fails, the
-    returned payload includes a human-readable error for the Streamlit sidebar.
+This is used by both /api/resolve_shortage and /api/generate_live_debate so
+Live Gemini mode cannot silently fall back to 0-token local mode. If Gemini
+configuration is missing or the API fails, the caller receives a clear failed
+status and an error message.
     """
-    requested_model = (model_target or os.environ.get("GEMINI_MODEL", "gemini-1.5-flash") or "gemini-1.5-flash").strip()
-    requested_model = requested_model.replace("models/", "")
+    supported_models = {"gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite"}
+    selected_model = model_target or os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+    model_target = selected_model
+    if model_target not in supported_models:
+        model_target = "gemini-1.5-flash"
 
-    # Try the selected model first, then fallback models. This prevents a stale
-    # or unsupported UI model name from making Live Gemini mode look like it ran
-    # while tokens stay at zero.
-    candidate_models = []
-    for m in [
-        requested_model,
-        os.environ.get("GEMINI_MODEL", "").replace("models/", ""),
-        "gemini-1.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-pro",
-        "gemini-2.0-flash-lite",
-    ]:
-        if m and m not in candidate_models:
-            candidate_models.append(m)
-
-    api_key = (
-        os.environ.get("GOOGLE_API_KEY")
-        or os.environ.get("GEMINI_API_KEY")
-        or os.environ.get("GOOGLE_GENAI_API_KEY")
-    )
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return {
             "success": False,
             "status": "failed",
-            "error": "Backend is missing GOOGLE_API_KEY, GEMINI_API_KEY, or GOOGLE_GENAI_API_KEY in Railway Variables.",
+            "error": "GOOGLE_API_KEY or GEMINI_API_KEY environment variable is not set in the backend service.",
             "llm_calls": 0,
             "prompt_tokens": 0,
             "response_tokens": 0,
             "total_tokens": 0,
             "estimated_api_cost": 0.0,
-            "model_used": requested_model
+            "model_used": model_target,
+            "selected_model": selected_model
         }
 
     prompt = _build_live_debate_prompt(context, rec_nurses, rejected_candidates)
-    payload = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": prompt}]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 700
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name=model_target,
+            system_instruction="You are a clinical multi-agent orchestration system for hospital staffing."
+        )
+        response = model.generate_content(prompt)
+        response_text = getattr(response, "text", "") or ""
+        usage = getattr(response, "usage_metadata", None)
+        pt = _safe_int(getattr(usage, "prompt_token_count", 0) if usage else 0)
+        rt = _safe_int(getattr(usage, "candidates_token_count", 0) if usage else 0)
+        tt = _safe_int(getattr(usage, "total_token_count", 0) if usage else 0)
+        if tt <= 0:
+            pt = _estimate_tokens(prompt)
+            rt = _estimate_tokens(response_text)
+            tt = pt + rt
+
+        staffing_part, safety_part, final_part = _parse_live_debate_text(response_text)
+        return {
+            "success": True,
+            "status": "called",
+            "staffing_vs_compliance": staffing_part,
+            "safety_vs_cost": safety_part,
+            "final_arbiter": final_part,
+            "raw_response": response_text,
+            "llm_calls": 1,
+            "prompt_tokens": pt,
+            "response_tokens": rt,
+            "total_tokens": tt,
+            "estimated_api_cost": (pt * 0.000000075) + (rt * 0.0000003),
+            "model_used": model_target,
+            "selected_model": selected_model,
+            "error": ""
         }
-    }
-
-    last_error = ""
-    for model_name in candidate_models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
-        try:
-            resp = requests.post(
-                url,
-                params={"key": api_key},
-                json=payload,
-                timeout=45
-            )
-            if resp.status_code >= 400:
-                try:
-                    err_body = resp.json()
-                    err_msg = err_body.get("error", {}).get("message", resp.text)
-                except Exception:
-                    err_msg = resp.text
-                last_error = f"{model_name}: HTTP {resp.status_code} - {err_msg[:500]}"
-                continue
-
-            data = resp.json()
-            parts = (
-                data.get("candidates", [{}])[0]
-                .get("content", {})
-                .get("parts", [])
-            )
-            response_text = "\n".join(
-                str(p.get("text", "")) for p in parts if isinstance(p, dict)
-            ).strip()
-
-            usage = data.get("usageMetadata", {}) or {}
-            pt = _safe_int(usage.get("promptTokenCount", 0))
-            rt = _safe_int(
-                usage.get("candidatesTokenCount", 0)
-                or usage.get("completionTokenCount", 0)
-            )
-            tt = _safe_int(usage.get("totalTokenCount", 0))
-            if tt <= 0:
-                pt = _estimate_tokens(prompt)
-                rt = _estimate_tokens(response_text)
-                tt = pt + rt
-
-            staffing_part, safety_part, final_part = _parse_live_debate_text(response_text)
-            return {
-                "success": True,
-                "status": "called",
-                "staffing_vs_compliance": staffing_part,
-                "safety_vs_cost": safety_part,
-                "final_arbiter": final_part,
-                "raw_response": response_text,
-                "llm_calls": 1,
-                "prompt_tokens": pt,
-                "response_tokens": rt,
-                "total_tokens": tt,
-                "estimated_api_cost": (pt * 0.000000075) + (rt * 0.0000003),
-                "model_used": model_name,
-                "error": ""
-            }
-        except Exception as e:
-            last_error = f"{model_name}: {type(e).__name__}: {str(e)[:500]}"
-            continue
-
-    return {
-        "success": False,
-        "status": "failed",
-        "error": f"Live Gemini API failed for all candidate models. Last error: {last_error}",
-        "llm_calls": 0,
-        "prompt_tokens": 0,
-        "response_tokens": 0,
-        "total_tokens": 0,
-        "estimated_api_cost": 0.0,
-        "model_used": requested_model
-    }
-
-
-@app.route("/api/gemini_status", methods=["GET"])
-def gemini_status():
-    """Lightweight configuration check for the frontend sidebar/debugging."""
-    key_name = None
-    for name in ["GOOGLE_API_KEY", "GEMINI_API_KEY", "GOOGLE_GENAI_API_KEY"]:
-        if os.environ.get(name):
-            key_name = name
-            break
-    return jsonify({
-        "success": True,
-        "configured": bool(key_name),
-        "key_variable": key_name or "",
-        "default_model": os.environ.get("GEMINI_MODEL", "gemini-1.5-flash"),
-        "message": "Gemini key found in backend Railway variables." if key_name else "No Gemini API key found in backend Railway variables."
-    })
-
+    except Exception as e:
+        return {
+            "success": False,
+            "status": "failed",
+            "error": f"Live Gemini API Error: {str(e)}",
+            "llm_calls": 0,
+            "prompt_tokens": 0,
+            "response_tokens": 0,
+            "total_tokens": 0,
+            "estimated_api_cost": 0.0,
+            "model_used": model_target,
+            "selected_model": selected_model
+        }
 
 @app.route("/api/health", methods=["GET"])
 def api_health():
@@ -460,7 +388,8 @@ def resolve_shortage():
                 "estimated_api_cost": (live_debate or {}).get("estimated_api_cost", 0.0),
                 "status": (live_debate or {}).get("status", "not_requested"),
                 "error": (live_debate or {}).get("error", ""),
-                "model_used": (live_debate or {}).get("model_used", data.get("gemini_model", "gemini-1.5-flash"))
+                "model_used": (live_debate or {}).get("model_used", ""),
+                "selected_model": (live_debate or {}).get("selected_model", data.get("gemini_model", "gemini-1.5-flash"))
             }
         })
     except Exception as e:
@@ -617,9 +546,11 @@ def generate_live_debate():
                 "estimated_api_cost": debate.get("estimated_api_cost", 0.0),
                 "status": debate.get("status", "failed"),
                 "error": debate.get("error", ""),
-                "model_used": debate.get("model_used", model_target)
+                "model_used": debate.get("model_used", model_target),
+                "selected_model": debate.get("selected_model", model_target)
             },
             "model_used": debate.get("model_used", model_target),
+            "selected_model": debate.get("selected_model", model_target),
             "error": debate.get("error", "")
         }), status_code
     except Exception as e:
