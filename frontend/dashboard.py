@@ -31,6 +31,97 @@ API_BASE_URL = os.getenv(
 if API_BASE_URL.endswith("/health"):
     API_BASE_URL = API_BASE_URL[:-len("/health")]
 
+
+# Operational pressure UI helpers
+# These small badges make it clear that staffing recommendations are not coming
+# from the raw XGBoost wait-time prediction alone. The model predicts wait-time;
+# the operational pressure engine adjusts staffing risk using live/demo ER signals.
+def _pressure_color_bundle(risk_label: str):
+    risk = (risk_label or "Normal").lower()
+    if "critical" in risk:
+        return {
+            "label": "Critical pressure",
+            "emoji": "🔴",
+            "border": "#ef4444",
+            "bg": "rgba(239, 68, 68, 0.14)",
+            "text": "#fecaca",
+        }
+    if "high" in risk:
+        return {
+            "label": "High pressure",
+            "emoji": "🟠",
+            "border": "#f97316",
+            "bg": "rgba(249, 115, 22, 0.14)",
+            "text": "#fed7aa",
+        }
+    if "elevated" in risk or "moderate" in risk or "medium" in risk:
+        return {
+            "label": "Elevated pressure",
+            "emoji": "🟡",
+            "border": "#f59e0b",
+            "bg": "rgba(245, 158, 11, 0.14)",
+            "text": "#fde68a",
+        }
+    return {
+        "label": "Normal pressure",
+        "emoji": "🟢",
+        "border": "#22c55e",
+        "bg": "rgba(34, 197, 94, 0.12)",
+        "text": "#bbf7d0",
+    }
+
+
+def get_operational_pressure_status(evidence=None):
+    evidence = evidence or {}
+    risk = evidence.get("adjusted_operational_risk") or evidence.get("operational_risk") or "Normal"
+    increments = int(evidence.get("operational_pressure_nurse_increments", 0) or 0)
+    if increments > 0 and str(risk).lower() in ["normal", "low", "none", "unknown"]:
+        risk = "Elevated"
+    return risk, increments, _pressure_color_bundle(str(risk))
+
+
+def render_operational_pressure_badge(evidence=None, compact=False):
+    evidence = evidence or {}
+    risk, increments, c = get_operational_pressure_status(evidence)
+    base_nurses = evidence.get("base_nurses_from_wait_time", 0)
+    final_nurses = evidence.get("final_additional_nurses_needed", 0)
+    reasons = evidence.get("nurse_increment_reasons", []) or []
+    if isinstance(reasons, str):
+        reasons = [reasons]
+    reason_preview = "; ".join(str(r) for r in reasons[:2])
+    if len(reasons) > 2:
+        reason_preview += "; …"
+    if not reason_preview:
+        reason_preview = "arrival surge, boarding, acuity, call-outs, and fast-track status checked"
+
+    detail = (
+        f"Base wait-time staffing: +{base_nurses} nurses · "
+        f"Operational adjustment: +{increments} nurses · "
+        f"Final recommendation: +{final_nurses} nurses"
+    )
+    if compact:
+        detail = f"Operational adjustment: +{increments} nurses · {reason_preview}"
+
+    return f"""
+    <div style="
+        background: {c['bg']};
+        border: 1px solid {c['border']};
+        border-left: 5px solid {c['border']};
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin: 10px 0 16px 0;
+        color: #F8FAFC;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+    ">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:5px;">
+            <span style="font-weight:800; color:{c['text']}; letter-spacing:0.02em;">{c['emoji']} Operational Pressure Engine: ACTIVE</span>
+            <span style="font-size:0.82rem; font-weight:800; color:{c['text']}; border:1px solid {c['border']}; border-radius:999px; padding:2px 9px; background:rgba(15,23,42,0.45);">{c['label']}</span>
+        </div>
+        <div style="font-size:0.92rem; color:#E5E7EB; line-height:1.45;">{detail}</div>
+        <div style="font-size:0.84rem; color:#CBD5E1; line-height:1.45; margin-top:4px;">Adjusted for: {reason_preview}</div>
+    </div>
+    """
+
 # Session state init
 if "audit_trail" not in st.session_state:
     st.session_state.audit_trail = []
@@ -1436,8 +1527,7 @@ with col_preset:
 </div>
 </div>
 </div>"""
-        with st.expander(f"📥 Loaded Demo Scenario Inputs — {selected_preset}", expanded=False):
-            st.markdown(preset_html, unsafe_allow_html=True)
+        st.markdown(preset_html, unsafe_allow_html=True)
 
 col_s1, col_s2, col_s3 = st.columns(3)
 with col_s1:
@@ -1938,6 +2028,8 @@ if workflow_page == "📋 Roster & Shortage Solver":
         
         st.markdown("---")
         st.markdown(f"**XGBoost Prediction**: `{pred:.1f} mins` (Safety Threshold: `{thresh} mins`)")
+        evidence = st.session_state.get("evidence", {})
+        st.markdown(render_operational_pressure_badge(evidence, compact=True), unsafe_allow_html=True)
         
         st.write(f"ℹ️ **Staffing Logic**: Predicted wait time is **{pred:.1f} mins**. Threshold is **{thresh} mins**. ")
         if needed > 0:
@@ -2102,6 +2194,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
         st.markdown("<h3 style='color: #a78bfa; border-bottom: 2px solid rgba(167, 139, 250, 0.3); padding-bottom: 8px; margin-top: 10px; font-size: 1.45rem; line-height: 1.25; font-weight: 700;'>2️⃣ Step 2: Staffing Action Plan</h3>", unsafe_allow_html=True)
         st.caption("Workflow Step 2 of 3: Generate an optimized roster change to resolve the detected shortage.")
         st.markdown("""<div style="background-color: #102A43; border: 1px solid #2563EB; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; color: #F8FAFC; line-height: 1.6; font-size: 0.95rem;"><p style="margin-top: 0; margin-bottom: 0; color: #FFFFFF;">Translate risk into an operational roster change. The ADK will find the best nurses to fill the gap.</p></div>""", unsafe_allow_html=True)
+        st.markdown(render_operational_pressure_badge(st.session_state.get("evidence", {}), compact=False), unsafe_allow_html=True)
         
         scen = st.session_state.xg_inputs
         st.markdown("**Target Shift Scenario (Read-Only)**")
