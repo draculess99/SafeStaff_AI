@@ -1333,7 +1333,21 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("##### 🛠️ Advanced Analytics")
 
 sidebar_log = st.session_state.get("pending_log") or {}
-sidebar_costs = sidebar_log.get("costs", {})
+sidebar_costs = dict(sidebar_log.get("costs", {}) or {})
+
+# Live Gemini token usage is tracked separately from the local solver log so the
+# sidebar reflects real API calls immediately after the live debate endpoint runs.
+if "live_gemini_usage" not in st.session_state:
+    st.session_state.live_gemini_usage = {
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "response_tokens": 0,
+        "total_tokens": 0,
+        "estimated_api_cost": 0.0,
+        "status": "idle",
+        "error": "",
+        "model_used": ""
+    }
 
 ai_mode = st.sidebar.radio(
     "AI Processing Engine", 
@@ -1345,7 +1359,12 @@ st.session_state.ai_mode = ai_mode
 with st.sidebar.expander("🔌 System Details", expanded=True):
     api_key_status = "🟢 Connected" if is_connected else "🔴 Server Offline"
     st.write(f"**API Connection**: {api_key_status}")
-    model_option = st.selectbox("Gemini Model Target", ["gemini-3.1-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro"])
+    model_option = st.selectbox(
+        "Gemini Model Target",
+        ["gemini-1.5-flash", "gemini-1.5-pro"],
+        index=0,
+        help="Use a supported Gemini model. Invalid model names can make the live call fail and leave token usage at zero."
+    )
     st.session_state.model_option = model_option
 
 with st.sidebar.expander("📊 XGBoost Model Performance"):
@@ -1390,6 +1409,9 @@ with st.sidebar.expander("📊 XGBoost Model Performance"):
 
 with st.sidebar.expander("🪙 Token Usage / Low-Token Mode", expanded=True):
     is_live = st.session_state.get("ai_mode") == "Live Gemini API (Tokens)"
+    live_usage = st.session_state.get("live_gemini_usage", {})
+    if is_live and live_usage.get("total_tokens", 0) > 0:
+        sidebar_costs = {**sidebar_costs, **live_usage}
     token_total = sidebar_costs.get('total_tokens', 0)
     st.markdown(f"""
     <div style="background: rgba(99, 102, 241, 0.15); border: 2px solid #6366f1; border-radius: 50%; width: 120px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px auto;">
@@ -1405,7 +1427,19 @@ with st.sidebar.expander("🪙 Token Usage / Low-Token Mode", expanded=True):
     st.write(f"**Mode**: {mode_str}")
     st.write(f"**Gemini LLM Calls**: {sidebar_costs.get('llm_calls', 0)}")
     st.write(f"**Estimated Cost**: ${sidebar_costs.get('estimated_api_cost', 0.0):.5f}")
-    st.caption("All rules, XGBoost calculations, feature importances, and debates run locally to minimize API token consumption.")
+    if is_live:
+        live_status = live_usage.get("status", "idle")
+        if live_usage.get("model_used"):
+            st.write(f"**Model Used**: `{live_usage.get('model_used')}`")
+        if live_status == "called":
+            st.success("Live Gemini call recorded and token usage captured.")
+        elif live_status == "failed":
+            st.error("Live Gemini selected, but the API call failed.")
+            st.caption(live_usage.get("error", "Check backend API key/model configuration."))
+        else:
+            st.caption("Live mode selected. Tokens will update after you launch the Multi-Agent Shortage Solver.")
+    else:
+        st.caption("All rules, XGBoost calculations, feature importances, and debates run locally to minimize API token consumption.")
 
 
 
@@ -2278,20 +2312,52 @@ if workflow_page == "📋 Roster & Shortage Solver":
                                     # Copy Gemini token counts into pending_log['costs'] so the sidebar
                                     # token widget updates immediately after rerun.
                                     st.session_state.pending_log.setdefault("costs", {})
+                                    live_usage = {
+                                        "llm_calls": int(debate.get("llm_calls", 1) or 1),
+                                        "prompt_tokens": int(debate.get("prompt_tokens", 0) or 0),
+                                        "response_tokens": int(debate.get("response_tokens", 0) or 0),
+                                        "total_tokens": int(debate.get("total_tokens", 0) or 0),
+                                        "estimated_api_cost": float(debate.get("estimated_api_cost", 0.0) or 0.0),
+                                        "status": "called",
+                                        "error": "",
+                                        "model_used": debate.get("model_used") or debate_json.get("model_used") or st.session_state.get("model_option", "gemini-1.5-flash")
+                                    }
+                                    st.session_state.live_gemini_usage = live_usage
                                     for k in ["llm_calls", "prompt_tokens", "response_tokens", "total_tokens", "estimated_api_cost"]:
-                                        st.session_state.pending_log["costs"][k] = debate.get(k, st.session_state.pending_log["costs"].get(k, 0))
+                                        st.session_state.pending_log["costs"][k] = live_usage[k]
 
                                     # Keep the older token_usage field in sync for sections that read it.
                                     st.session_state.pending_log["token_usage"] = {
-                                        "prompt": debate.get("prompt_tokens", 0),
-                                        "response": debate.get("response_tokens", 0),
-                                        "total": debate.get("total_tokens", 0),
-                                        "llm_calls": debate.get("llm_calls", 0)
+                                        "prompt": live_usage["prompt_tokens"],
+                                        "response": live_usage["response_tokens"],
+                                        "total": live_usage["total_tokens"],
+                                        "llm_calls": live_usage["llm_calls"]
                                     }
-                                    st.caption(f"✅ Live Gemini debate called. Tokens used: {debate.get('total_tokens', 0)}")
+                                    st.caption(f"✅ Live Gemini debate called. Tokens used: {live_usage['total_tokens']}")
                                 else:
-                                    st.warning(f"Live Gemini debate did not run: {debate_json.get('error', 'Unknown error')}")
+                                    err = debate_json.get('error', 'Unknown error')
+                                    st.session_state.live_gemini_usage = {
+                                        "llm_calls": 0,
+                                        "prompt_tokens": 0,
+                                        "response_tokens": 0,
+                                        "total_tokens": 0,
+                                        "estimated_api_cost": 0.0,
+                                        "status": "failed",
+                                        "error": err,
+                                        "model_used": st.session_state.get("model_option", "gemini-1.5-flash")
+                                    }
+                                    st.warning(f"Live Gemini debate did not run: {err}")
                             except Exception as live_e:
+                                st.session_state.live_gemini_usage = {
+                                    "llm_calls": 0,
+                                    "prompt_tokens": 0,
+                                    "response_tokens": 0,
+                                    "total_tokens": 0,
+                                    "estimated_api_cost": 0.0,
+                                    "status": "failed",
+                                    "error": str(live_e),
+                                    "model_used": st.session_state.get("model_option", "gemini-1.5-flash")
+                                }
                                 st.warning(f"Live Gemini debate failed; using local recommendation fallback: {live_e}")
 
                         # Just do the progress bar once
