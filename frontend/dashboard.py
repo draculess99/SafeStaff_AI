@@ -177,6 +177,11 @@ demo_scenarios = {
 def on_demo_scenario_change():
     sel = st.session_state.demo_select
     if sel and demo_scenarios[sel]:
+        # Demo scenario presets belong to the main roster/shortage workflow.
+        # Keep the user anchored there after a preset is loaded, even if they
+        # were previously viewing Stress, Explainability, Audit, etc.
+        st.session_state.workflow_page = "📋 Roster & Shortage Solver"
+
         data = demo_scenarios[sel]
         st.session_state.scen_date = data["date"]
         st.session_state.scen_type = data["type"]
