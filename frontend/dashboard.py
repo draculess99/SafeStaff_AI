@@ -1628,13 +1628,22 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-with st.expander("Developer Testing Only: Manual Memory Update", expanded=False):
+with st.expander("🧠 Memory & Developer Tools", expanded=False):
+    st.caption(
+        "Advanced memory controls and historical context. These tools are collapsed by default so the main staffing workflow stays clean."
+    )
+
+    st.markdown("#### Manual Memory Update")
     mem_state = get_inflow_memory_state()
     st.markdown("##### Current Inflow Memory State (`database/inflow_memory_state.json`)")
     st.json(mem_state)
-    
-    st.markdown("This memory layer makes the agent's prior forecast error and rolling inflow trend visible. The next prediction is not stateless; it is adjusted using `rolling_inflow_avg`, `last_prediction_delta`, and `trend_direction`.")
-    
+
+    st.markdown(
+        "This memory layer makes the agent's prior forecast error and rolling inflow trend visible. "
+        "The next prediction is not stateless; it is adjusted using `rolling_inflow_avg`, "
+        "`last_prediction_delta`, and `trend_direction`."
+    )
+
     telemetry = {
         "waiting_room_count": st.session_state.waiting_room_count,
         "patient_inflow_multiplier": st.session_state.patient_inflow_multiplier,
@@ -1642,36 +1651,34 @@ with st.expander("Developer Testing Only: Manual Memory Update", expanded=False)
         "ambulance_arrival_pressure": st.session_state.ambulance_arrival_pressure,
         "ed_occupancy_percent": st.session_state.ed_occupancy_percent
     }
-    
+
     if st.button("Forecast Next 10-Min Patient Inflow"):
         forecast_result = forecast_inflow_memory(telemetry)
         st.session_state.last_forecast = forecast_result.get("forecasted_volume", 0)
         st.markdown("##### New Forecast Generated")
         st.json(forecast_result)
-        
+
     st.markdown("##### Submit Ground Truth")
     actual_inflow = st.number_input("Actual patient inflow in last 10 minutes", min_value=0, value=0)
-    
+
     if st.button("Update Memory With Actual Inflow"):
         last_fc = st.session_state.get("last_forecast", mem_state.get("last_forecasted_volume", 0))
         updated_mem = update_inflow_memory_state(last_fc, actual_inflow)
         st.success("Memory updated successfully.")
         st.json(updated_mem)
-        
-st.markdown("---")
 
-with st.expander("Recent Inflow Memory History", expanded=False):
-    st.markdown("##### Recent Inflow Memory History (`database/inflow_memory_history.json`)")
-    st.caption("Loaded from a short cache so this collapsed expander no longer blocks every page interaction.")
+    st.markdown("---")
+    st.markdown("#### Recent Inflow Memory History")
+    st.caption("Loaded from a short cache so this section does not block normal page interaction.")
     hist_data = get_inflow_history()
     if hist_data:
         st.json(hist_data[-5:])
     else:
         st.write("No history available.")
 
-with st.expander("Similar Prior ER Memory Events", expanded=False):
-    st.markdown("##### Similar Prior ER Memory Events")
-    st.caption("This remote lookup is loaded only when requested so the dashboard does not block during normal page rendering.")
+    st.markdown("---")
+    st.markdown("#### Similar Prior ER Memory Events")
+    st.caption("Remote lookup is only run when requested.")
     if st.button("Load Similar Prior ER Memory Events", key="load_similar_memory_events_top"):
         try:
             scenario_sig = {
@@ -1682,7 +1689,11 @@ with st.expander("Similar Prior ER Memory Events", expanded=False):
                 "fatigue_pressure": "High" if st.session_state.nurse_callout_rate > 15 else "Low",
                 "acuity_pressure": "High" if st.session_state.scen_acuity < 3 else "Low"
             }
-            resp = requests.post(f"{API_BASE_URL}/api/find_similar_history", json={"scenario_signature": scenario_sig}, timeout=10)
+            resp = requests.post(
+                f"{API_BASE_URL}/api/find_similar_history",
+                json={"scenario_signature": scenario_sig},
+                timeout=10
+            )
             sim_data = resp.json() if resp.ok else {}
             if sim_data and sim_data.get("similar_events"):
                 st.json(sim_data["similar_events"])
