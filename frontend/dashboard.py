@@ -1435,9 +1435,27 @@ with st.sidebar.expander("🪙 Token Usage / Low-Token Mode", expanded=True):
             st.success("Live Gemini call recorded and token usage captured.")
         elif live_status == "failed":
             st.error("Live Gemini selected, but the API call failed.")
-            st.caption(live_usage.get("error", "Check backend API key/model configuration."))
+            err_txt = live_usage.get("error", "Check backend API key/model configuration.")
+            st.caption(err_txt)
+            with st.expander("Show Live Gemini failure details", expanded=False):
+                st.code(err_txt)
+                st.markdown(
+                    "Check Railway **backend service** Variables for `GOOGLE_API_KEY`, "
+                    "`GEMINI_API_KEY`, or `GOOGLE_GENAI_API_KEY`. The key must be on the "
+                    "Flask/Gunicorn backend service, not only the Streamlit frontend."
+                )
         else:
             st.caption("Live mode selected. Tokens will update after you launch the Multi-Agent Shortage Solver.")
+        if st.button("Check Live Gemini Backend Config", key="check_gemini_backend_config"):
+            try:
+                gstat = requests.get(f"{API_BASE_URL}/api/gemini_status", timeout=15).json()
+                if gstat.get("configured"):
+                    st.success(f"Gemini key found on backend: {gstat.get('key_variable')}. Default model: {gstat.get('default_model')}")
+                else:
+                    st.error("No Gemini API key found on backend Railway service.")
+                    st.caption("Add GOOGLE_API_KEY or GEMINI_API_KEY to the backend service Variables, then redeploy.")
+            except Exception as gemini_status_e:
+                st.error(f"Could not check backend Gemini config: {gemini_status_e}")
     else:
         st.caption("All rules, XGBoost calculations, feature importances, and debates run locally to minimize API token consumption.")
 
@@ -2282,7 +2300,7 @@ if workflow_page == "📋 Roster & Shortage Solver":
             
             with st.spinner("Running multi-agent shortage solver..."):
                 try:
-                    res = requests.post(f"{API_BASE_URL}/api/resolve_shortage", json=payload)
+                    res = requests.post(f"{API_BASE_URL}/api/resolve_shortage", json=payload, timeout=90)
                     result = res.json()
                     
                     if result.get("success"):
