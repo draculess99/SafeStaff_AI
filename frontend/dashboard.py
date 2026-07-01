@@ -778,11 +778,80 @@ def normalize_records(payload, list_keys=("data", "results", "items", "schedule"
             return [payload]
     return []
 
+def summarize_active_agents(value):
+    """Create a compact, readable summary of active agent records for the audit table."""
+    if not value:
+        return "None"
+    if isinstance(value, str):
+        return value
+    if not isinstance(value, list):
+        return format_nested_value(value)
+
+    agent_names = []
+    for item in value:
+        if isinstance(item, dict):
+            name = (
+                item.get("agent_name")
+                or item.get("name")
+                or item.get("agent")
+                or item.get("id")
+                or item.get("title")
+            )
+            if name:
+                agent_names.append(str(name))
+        elif item:
+            agent_names.append(str(item))
+
+    if not agent_names:
+        return "None"
+    return f"{len(agent_names)} active: " + "; ".join(agent_names)
+
+
+def summarize_agent_reasons(value, max_reasons=4):
+    """Create a compact summary of why agents/modules activated."""
+    if not value:
+        return "None"
+    if isinstance(value, str):
+        return value
+
+    reasons = []
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                reason = (
+                    item.get("activation_reason")
+                    or item.get("reason")
+                    or item.get("description")
+                    or item.get("status")
+                    or item.get("signal_used")
+                )
+                if reason:
+                    reasons.append(str(reason))
+            elif item:
+                reasons.append(str(item))
+    else:
+        return format_nested_value(value)
+
+    # Preserve order while removing duplicates.
+    unique_reasons = []
+    for reason in reasons:
+        if reason not in unique_reasons:
+            unique_reasons.append(reason)
+
+    if not unique_reasons:
+        return "None"
+    if len(unique_reasons) > max_reasons:
+        shown = unique_reasons[:max_reasons]
+        return "; ".join(shown) + f"; +{len(unique_reasons) - max_reasons} more"
+    return "; ".join(unique_reasons)
+
+
 def format_nested_value(value):
     """Convert lists/dicts from API payloads into readable strings for tables.
 
-    Streamlit/Arrow can show nested objects as [object Object]. The audit log table
-    is easier to read when nested agent/reason/cost fields are flattened first.
+    Streamlit/Arrow can render nested objects poorly in table cells. The audit log
+    table should show compact summaries, while the detailed audit expander keeps
+    the full underlying record available for inspection.
     """
     if value is None:
         return ""
@@ -794,19 +863,33 @@ def format_nested_value(value):
         formatted_items = []
         for item in value:
             if isinstance(item, dict):
-                name = item.get("name") or item.get("agent") or item.get("id") or item.get("title")
-                reason = item.get("reason") or item.get("description") or item.get("status")
+                name = (
+                    item.get("agent_name")
+                    or item.get("name")
+                    or item.get("agent")
+                    or item.get("id")
+                    or item.get("title")
+                )
+                reason = (
+                    item.get("activation_reason")
+                    or item.get("reason")
+                    or item.get("description")
+                    or item.get("status")
+                    or item.get("signal_used")
+                )
                 if name and reason:
                     formatted_items.append(f"{name}: {reason}")
                 elif name:
                     formatted_items.append(str(name))
+                elif reason:
+                    formatted_items.append(str(reason))
                 else:
-                    formatted_items.append(json.dumps(item, ensure_ascii=False))
+                    formatted_items.append(", ".join(f"{k}: {v}" for k, v in item.items() if not isinstance(v, (list, dict))))
             elif isinstance(item, list):
                 formatted_items.append(", ".join(str(x) for x in item))
             else:
                 formatted_items.append(str(item))
-        return "; ".join(formatted_items)
+        return "; ".join(x for x in formatted_items if x)
     if isinstance(value, dict):
         if not value:
             return ""
@@ -818,13 +901,41 @@ def format_nested_value(value):
         return "; ".join(compact_pairs)
     return str(value)
 
+
 def build_audit_table_rows(audit_entries):
-    """Return a display-safe audit table without [object Object] nested cells."""
+    """Return a compact display-safe audit table without nested [object Object] cells."""
+    preferred_columns = [
+        ("timestamp", "Timestamp"),
+        ("shift_date", "Shift Date"),
+        ("shift_type", "Shift"),
+        ("department", "Department"),
+        ("human_decision", "Human Decision"),
+        ("roster_update_status", "Roster Update"),
+        ("risk_level", "Risk Level"),
+        ("predicted_wait_time", "Predicted Wait"),
+        ("additional_nurses_needed", "Additional Nurses"),
+        ("final_nurses_recommended", "Final Nurses"),
+        ("approval_required", "Approval Required"),
+        ("active_agents", "Active Agents"),
+        ("agent_activation_reasons", "Activation Reasons"),
+        ("token_mode", "Token Mode"),
+    ]
+
     rows = []
     for entry in audit_entries:
         if not isinstance(entry, dict):
             continue
-        rows.append({key: format_nested_value(value) for key, value in entry.items()})
+        row = {}
+        for key, label in preferred_columns:
+            if key not in entry:
+                continue
+            if key == "active_agents":
+                row[label] = summarize_active_agents(entry.get(key))
+            elif key == "agent_activation_reasons":
+                row[label] = summarize_agent_reasons(entry.get(key))
+            else:
+                row[label] = format_nested_value(entry.get(key))
+        rows.append(row)
     return rows
 
 def _fetch_records(endpoint, list_keys, timeout=5):
