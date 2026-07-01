@@ -37,6 +37,9 @@ if "audit_trail" not in st.session_state:
 if "cno_chat_history" not in st.session_state:
     st.session_state.cno_chat_history = []
 
+# Workflow selector constants
+ROSTER_WORKFLOW_LABEL = "📋 Roster & Shortage Solver"
+
 # Demo presets
 demo_scenarios = {
     "Select a Demo Scenario...": None,
@@ -180,7 +183,8 @@ def on_demo_scenario_change():
         # Demo scenario presets belong to the main roster/shortage workflow.
         # Keep the user anchored there after a preset is loaded, even if they
         # were previously viewing Stress, Explainability, Audit, etc.
-        st.session_state.workflow_page = "📋 Roster & Shortage Solver"
+        st.session_state["workflow_page"] = ROSTER_WORKFLOW_LABEL
+        st.session_state["_force_roster_workflow_after_preset"] = True
 
         data = demo_scenarios[sel]
         st.session_state.scen_date = data["date"]
@@ -1511,17 +1515,29 @@ def render_styled_table(df):
     return html
 
 st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Choose a tab below. This keeps the old tab-style workflow, but only renders the selected section for speed.</p>", unsafe_allow_html=True)
+
+WORKFLOW_OPTIONS = [
+    ROSTER_WORKFLOW_LABEL,
+    "⚡ System Stress Simulator",
+    "🔍 Explainability & Token Logs",
+    "📝 Audit Log",
+    "🔬 Research & Validation",
+    "🏛️ AI Committee Debate & Planner",
+    "📈 Model Performance",
+]
+
+# When a demo scenario preset is loaded, force the radio widget state back to
+# the main roster workflow before the widget is rendered. This makes the tab
+# both selected in session state and visibly "pressed" in the Streamlit radio UI.
+if st.session_state.pop("_force_roster_workflow_after_preset", False):
+    st.session_state["workflow_page"] = ROSTER_WORKFLOW_LABEL
+
+if st.session_state.get("workflow_page") not in WORKFLOW_OPTIONS:
+    st.session_state["workflow_page"] = ROSTER_WORKFLOW_LABEL
+
 workflow_page = st.radio(
     "Workflow",
-    [
-        "📋 Roster & Shortage Solver",
-        "⚡ System Stress Simulator",
-        "🔍 Explainability & Token Logs",
-        "📝 Audit Log",
-        "🔬 Research & Validation",
-        "🏛️ AI Committee Debate & Planner",
-        "📈 Model Performance",
-    ],
+    WORKFLOW_OPTIONS,
     horizontal=True,
     key="workflow_page",
     label_visibility="collapsed",
@@ -1530,7 +1546,7 @@ workflow_page = st.radio(
 
 # Selected workflow panel banner: makes the content area feel themed, not just the tab button.
 WORKFLOW_PANEL_META = {
-    "📋 Roster & Shortage Solver": {
+    ROSTER_WORKFLOW_LABEL: {
         "class": "roster",
         "title": "📋 Roster & Shortage Solver",
         "help": "Primary operating panel for shift schedule, nurse registry, shortage resolution, approval, and roster updates.",
