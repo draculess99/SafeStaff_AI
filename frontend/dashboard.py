@@ -493,6 +493,106 @@ st.markdown("""
         display: none !important;
     }
     
+
+
+    /* Roster workspace: 3-step shortage workflow structure.
+       Same blue operational theme, but stronger visual grouping so this feels like
+       the main guided workflow inside the Roster & Shortage Solver tab. */
+    .shortage-workflow-shell {
+        margin: 18px 0 18px 0;
+        padding: 18px 20px 16px 20px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(30, 64, 175, 0.24), rgba(15, 23, 42, 0.82));
+        border: 1px solid rgba(96, 165, 250, 0.42);
+        border-left: 5px solid #60a5fa;
+        box-shadow: 0 14px 32px rgba(2, 6, 23, 0.34), 0 0 0 1px rgba(96, 165, 250, 0.08) inset;
+    }
+    .shortage-workflow-kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: #93c5fd;
+        font-size: 0.72rem;
+        font-weight: 850;
+        margin-bottom: 5px;
+    }
+    .shortage-workflow-title {
+        color: #f8fafc;
+        font-size: 1.18rem;
+        line-height: 1.35rem;
+        font-weight: 900;
+        margin-bottom: 5px;
+    }
+    .shortage-workflow-copy {
+        color: #cbd5e1;
+        font-size: 0.92rem;
+        line-height: 1.45rem;
+        font-weight: 560;
+        margin-bottom: 14px;
+    }
+    .shortage-workflow-track {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+    }
+    .shortage-step-card {
+        min-height: 72px;
+        padding: 12px 13px;
+        border-radius: 13px;
+        background: rgba(15, 23, 42, 0.62);
+        border: 1px solid rgba(147, 197, 253, 0.30);
+        box-shadow: 0 8px 18px rgba(2, 6, 23, 0.22);
+    }
+    .shortage-step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: rgba(37, 99, 235, 0.92);
+        color: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 900;
+        margin-right: 7px;
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+    }
+    .shortage-step-label {
+        color: #ffffff;
+        font-weight: 850;
+        font-size: 0.90rem;
+        white-space: nowrap;
+    }
+    .shortage-step-help {
+        margin-top: 7px;
+        color: #bfdbfe;
+        font-size: 0.80rem;
+        line-height: 1.15rem;
+        font-weight: 560;
+    }
+    .shortage-step-card:nth-child(2) {
+        border-color: rgba(167, 139, 250, 0.36);
+    }
+    .shortage-step-card:nth-child(2) .shortage-step-number {
+        background: rgba(124, 58, 237, 0.92);
+        box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.15);
+    }
+    .shortage-step-card:nth-child(3) {
+        border-color: rgba(52, 211, 153, 0.34);
+    }
+    .shortage-step-card:nth-child(3) .shortage-step-number {
+        background: rgba(5, 150, 105, 0.95);
+        box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+    }
+    @media (max-width: 900px) {
+        .shortage-workflow-track {
+            grid-template-columns: 1fr;
+        }
+        .shortage-step-label {
+            white-space: normal;
+        }
+    }
+
     .main .block-container {
         padding-top: 2rem;
     }
@@ -1607,7 +1707,33 @@ if workflow_page == "📋 Roster & Shortage Solver":
 
     st.markdown("---")
     
-    st.markdown("### 🚦 3-Step Shortage Resolution Workflow")
+    st.markdown(
+        """
+        <div class="shortage-workflow-shell">
+            <div class="shortage-workflow-kicker">Roster workspace guide</div>
+            <div class="shortage-workflow-title">🚦 3-Step Shortage Resolution Workflow</div>
+            <div class="shortage-workflow-copy">
+                Follow the operational path from wait-time risk assessment to AI staffing action plan to final human approval.
+                This stays inside the Roster &amp; Shortage Solver theme, with stronger structure so the workflow is easier to demo.
+            </div>
+            <div class="shortage-workflow-track">
+                <div class="shortage-step-card">
+                    <div><span class="shortage-step-number">1</span><span class="shortage-step-label">Assess ER risk</span></div>
+                    <div class="shortage-step-help">Forecast wait time and detect staffing pressure.</div>
+                </div>
+                <div class="shortage-step-card">
+                    <div><span class="shortage-step-number">2</span><span class="shortage-step-label">Solve shortage</span></div>
+                    <div class="shortage-step-help">Generate the safest roster action plan.</div>
+                </div>
+                <div class="shortage-step-card">
+                    <div><span class="shortage-step-number">3</span><span class="shortage-step-label">Approve roster</span></div>
+                    <div class="shortage-step-help">Review, approve, reject, or override with audit trail.</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     
     # Step 1
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
