@@ -185,6 +185,33 @@ flowchart TD
 
 ---
 
+## Data Sources and Operational Pressure Modules
+
+SafeStaff AI uses public/Kaggle-derived and simulated proxy data for demonstration. The project does not use real patient records, protected health information, or live hospital staffing data.
+
+The main ER wait-time model is based on the Kaggle ER Wait Time dataset by Rivalytics:
+
+[Kaggle — ER Wait Time by Rivalytics](https://www.kaggle.com/datasets/rivalytics/er-wait-time)
+
+This dataset is used to train the XGBoost wait-time forecasting model.
+
+In addition to the main wait-time dataset, SafeStaff AI includes prototype operational pressure modules. These modules convert ER operations signals into staffing-risk adjustments. They are not separate clinical prediction models; they are research-inspired lookup tables and rule-based pressure signals generated from the Kaggle-derived ER dataset and simulated operational assumptions.
+
+The operational pressure modules include:
+
+| Module | Purpose | Prototype source |
+|---|---|---|
+| ESI Seasonal Patterns | Estimates acuity/urgency pressure | Mapped from Kaggle ER urgency levels |
+| Bed Boarding Pressure | Simulates boarding and bed-flow pressure | Proxy generated from wait-time patterns by hour/day/month |
+| Arrival Surge Pressure | Detects patient volume surges | Aggregated from patient visit counts and wait-time patterns |
+| Fast Track Flow | Detects low-acuity bottlenecks | Aggregated from low-urgency visit counts and queue-size proxies |
+
+These modules are stored in the `database/` folder and documented in the app’s Data Sources Registry. They help explain why the final staffing recommendation may be higher than the raw XGBoost wait-time prediction alone.
+
+Because these are prototype research modules, they would need to be replaced, calibrated, and clinically validated with real hospital operational data before production use.
+
+---
+
 ## Key features
 
 ### XGBoost ER wait-time forecasting
