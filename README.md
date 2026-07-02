@@ -46,26 +46,13 @@ Roster update + audit log
 
 ## Screenshot checklist for the README
 
-Add screenshots in this order so reviewers can understand the app quickly:
-
-1. **Control Tower overview** — ER status, pipeline status, main workflow tab.
-2. **Loaded demo scenario inputs** — flu surge, boarding, occupancy, call-outs, pressure inputs.
-3. **Shift Schedule & Status** — shows the active schedule before/after a roster update.
-4. **Nurse Database Registry summary** — shows nurses loaded and registry expander.
-5. **Step 1: ER Wait-Time Risk Assessment** — XGBoost wait prediction and ER operational pressure.
-6. **Step 2: Pressure-Based Staffing Adjustment** — base staffing, operational adjustment, final recommendation.
-7. **Multi-Agent Workflow Execution Progress** — planner, compliance, safety, finance, arbiter, human approval.
-8. **Final Decision Executive Summary** — approved/rejected decision and roster/audit result.
-9. **Human Decision Audit Log** — persistent audit record.
-10. **Token Usage / Low-Token Mode** — local deterministic mode vs Live Gemini token tracking.
-
-Suggested README image folder:
+Create this folder in the root of the GitHub repository:
 
 ```text
 assets/screenshots/
 ```
 
-Suggested image names:
+Then save your screenshots using the filenames below. Keeping the filenames short, numbered, and lowercase makes the README links easier to maintain.
 
 ```text
 assets/screenshots/01-control-tower-overview.png
@@ -77,14 +64,86 @@ assets/screenshots/06-step2-pressure-adjustment.png
 assets/screenshots/07-agent-workflow-progress.png
 assets/screenshots/08-final-decision-summary.png
 assets/screenshots/09-audit-log.png
-assets/screenshots/10-token-usage-mode.png
+assets/screenshots/10-explainability-cost-analytics.png
 ```
 
-Example markdown:
+Use screenshots in this order so reviewers can understand the app quickly:
 
-```md
-![SafeStaff AI Control Tower](assets/screenshots/01-control-tower-overview.png)
-```
+1. **Control Tower overview** — ER status, pipeline status, main workflow tab.
+2. **Loaded demo scenario inputs** — flu surge, boarding, occupancy, call-outs, pressure inputs.
+3. **Shift Schedule & Status** — shows the active schedule before/after a roster update.
+4. **Nurse Database Registry summary** — shows nurses loaded and registry expander.
+5. **Step 1: ER Wait-Time Risk Assessment** — XGBoost wait prediction and ER operational pressure.
+6. **Step 2: Pressure-Based Staffing Adjustment** — base staffing, operational adjustment, final recommendation.
+7. **Multi-Agent Workflow Execution Progress** — planner, compliance, safety, finance, arbiter, human approval.
+8. **Final Decision Executive Summary** — approved/rejected decision and roster/audit result.
+9. **Human Decision Audit Log** — persistent audit record.
+10. **Explainability Reports & Cost Analytics** — local deterministic mode vs Live Gemini token tracking, token usage, estimated cost, and decoded multi-agent explanation.
+
+### Screenshot gallery
+
+> Add your screenshots into `assets/screenshots/` using the exact filenames shown below. GitHub will render them automatically in the README.
+
+#### 1. Control Tower Overview
+
+![SafeStaff AI Control Tower Overview](assets/screenshots/01-control-tower-overview.png)
+
+The Control Tower provides the main operational dashboard, including ER status, pipeline readiness, backend connection, model status, and the current operational pressure state.
+
+#### 2. Demo Scenario Inputs
+
+![SafeStaff AI Demo Scenario Inputs](assets/screenshots/02-demo-scenario-inputs.png)
+
+The demo scenario screen allows reviewers to load operational stress cases such as winter flu surge, staff call-outs, high boarding, high occupancy, fast-track pressure, and increased patient volume.
+
+#### 3. Shift Schedule & Status
+
+![SafeStaff AI Shift Schedule and Status](assets/screenshots/03-shift-schedule-status.png)
+
+The shift schedule shows the active roster, assigned nurses, acuity level, predicted wait time, and staffing status before and after a recommended roster update.
+
+#### 4. Nurse Database Registry
+
+![SafeStaff AI Nurse Database Registry](assets/screenshots/04-nurse-registry-summary.png)
+
+The nurse registry provides the staffing pool used by the shortage solver, including nurse availability, department fit, fatigue limits, and credential matching.
+
+#### 5. Step 1: ER Wait-Time Risk Assessment
+
+![SafeStaff AI Step 1 ER Wait-Time Risk Assessment](assets/screenshots/05-step1-wait-time-risk.png)
+
+Step 1 uses the XGBoost model to predict ER wait time and combines that forecast with operational pressure signals to classify the current staffing risk.
+
+#### 6. Step 2: Pressure-Based Staffing Adjustment
+
+![SafeStaff AI Step 2 Pressure-Based Staffing Adjustment](assets/screenshots/06-step2-pressure-adjustment.png)
+
+Step 2 separates the base wait-time staffing need from the operational adjustment, then produces the final additional-nurse recommendation.
+
+#### 7. Multi-Agent Workflow Execution Progress
+
+![SafeStaff AI Multi-Agent Workflow Execution Progress](assets/screenshots/07-agent-workflow-progress.png)
+
+The multi-agent workflow shows the staffing recommendation being reviewed by the planner, compliance guard, patient safety agent, financial auditor, final arbiter, and human approval checkpoint.
+
+#### 8. Final Decision Executive Summary
+
+![SafeStaff AI Final Decision Executive Summary](assets/screenshots/08-final-decision-summary.png)
+
+The final decision summary records whether the optimized roster was approved or rejected, confirms the roster update result, and shows whether the audit log was recorded.
+
+#### 9. Human Decision Audit Log
+
+![SafeStaff AI Human Decision Audit Log](assets/screenshots/09-audit-log.png)
+
+The audit log stores a persistent record of each staffing decision, including predicted wait time, staffing need, selected nurses, cost impact, approval status, compliance warnings, and decision rationale.
+
+#### 10. Explainability Reports & Cost Analytics
+
+![SafeStaff AI Explainability Reports and Cost Analytics](assets/screenshots/10-explainability-cost-analytics.png)
+
+The explainability and cost analytics screen shows the resolution history, LLM token usage audit, estimated API cost, local-vs-live reasoning mode, and decoded multi-agent explanation.
+
 
 ---
 
@@ -327,6 +386,8 @@ SafeStaff_AI/
 │       └── adk_agents.py           # Agentic debate/planner logic
 ├── frontend/
 │   └── dashboard.py                # Streamlit dashboard
+├── assets/
+│   └── screenshots/                # README screenshots and demo images
 ├── database/
 │   ├── db.json                     # Mock nurse registry, schedule, logs, audit state
 │   ├── inflow_memory_state.json    # Current inflow memory
