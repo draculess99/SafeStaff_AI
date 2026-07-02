@@ -2,7 +2,7 @@
 
 SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. It combines an XGBoost ER wait-time forecast, operational pressure modules, a nurse registry, a shift schedule, a multi-agent shortage solver, human approval, and an audit log into one Streamlit control-tower workflow.
 
-> **Prototype notice:** SafeStaff AI is a demonstration and decision-support prototype. It is not clinically validated and must not be used for real patient-care or staffing decisions without hospital governance, validation, security review, and human supervision.
+> **Prototype notice:** SafeStaff AI is a demonstration and decision-support prototype. It is not clinically validated and must not be used for real patient-care or staffing decisions without hospital governance, validation, security review, and human supervision. The system is intended to support nurse managers and staffing coordinators, not replace clinical or operational judgment.
 
 ---
 
@@ -265,7 +265,7 @@ This supports governance, traceability, and demo explainability.
 
 ### Local Expert System vs Live Gemini mode
 
-SafeStaff supports two reasoning modes:
+SafeStaff supports two reasoning modes. This is intentional: the app can run in low-token deterministic mode for reliability and cost control, while Live Gemini mode can add richer narrative reasoning when quota and API access are available.
 
 #### Local / low-token mode
 
@@ -286,13 +286,13 @@ Estimated Cost: [estimated cost]
 Model Used: [successful model]
 ```
 
-Live mode adds richer narrative reasoning and token/cost transparency. If quota fails, the app falls back to local deterministic mode and shows the error clearly.
+Live mode adds richer narrative reasoning and token/cost transparency. If quota, network access, or model availability fails, SafeStaff falls back to the local deterministic expert-system mode so the workflow remains demo-safe, cost-controlled, and explainable.
 
 ---
 
 ## Data and privacy statement
 
-This project uses simulated, synthetic, and Kaggle-derived proxy data for demonstration. No real patient records are required, and no PHI should be committed to the repository.
+This project uses simulated data and public/Kaggle-derived proxy datasets for demonstration. No real patient records are required, and no PHI should be committed to the repository.
 
 Key data files:
 
@@ -551,6 +551,8 @@ Current limitations:
 ## Future Improvements / Production Hardening
 
 SafeStaff AI is currently designed as a capstone prototype that demonstrates ER wait-time forecasting, operational pressure adjustment, nurse staffing recommendations, human approval, and audit logging. To move this from a prototype into a production-grade healthcare operations system, several improvements would be required.
+
+In short, productionizing SafeStaff AI would require replacing local JSON state with a managed database, adding authentication and role-based access, hardening security, validating the model on real hospital data, strengthening audit logs, and integrating with hospital scheduling, staffing, and operational data systems.
 
 ### 1. Move Local JSON State to a Production Database
 
