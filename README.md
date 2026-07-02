@@ -228,7 +228,10 @@ Because these are prototype research modules, they would need to be replaced, ca
 ```mermaid
 flowchart TD
     A[Kaggle ER Wait-Time Dataset] --> B[XGBoost Training]
-    B --> C[Wait-Time Prediction]
+    B --> C[Trained XGBoost Model]
+
+    S[Loaded Demo Scenario / ER Operational Inputs] --> C
+    C --> P[Wait-Time Prediction]
 
     D[Kaggle-Derived / Simulated Pressure Modules] --> D1[Arrival Surge]
     D --> D2[Bed Boarding]
@@ -236,7 +239,13 @@ flowchart TD
     D --> D4[Fast-Track Bottleneck]
     D --> D5[Fatigue and Call-Out Rules]
 
-    C --> E[Pressure-Based Staffing Adjustment]
+    S --> D1
+    S --> D2
+    S --> D3
+    S --> D4
+    S --> D5
+
+    P --> E[Pressure-Based Staffing Adjustment]
     D1 --> E
     D2 --> E
     D3 --> E
@@ -248,6 +257,8 @@ flowchart TD
     G --> H[Roster Update]
     G --> I[Audit Log]
 ```
+
+This diagram separates the historical/proxy data used to train the XGBoost model from the current demo scenario loaded in the application. The loaded scenario represents the current ER operational state, while the Kaggle-derived data and prototype pressure modules provide the forecasting and decision-support logic used to produce the staffing recommendation.
 
 ---
 
