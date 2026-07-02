@@ -1,8 +1,6 @@
 # SafeStaff AI — ER Wait-Time Forecasting and Nurse-Staffing Decision Support
 
-SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. It combines an XGBoost ER wait-time forecast, operational pressure modules, a nurse registry, a shift schedule, a multi-agent shortage solver, human approval, and an audit log into one Streamlit control-tower workflow.
-
-> **Prototype notice:** SafeStaff AI is a demonstration and decision-support prototype. It is not clinically validated and must not be used for real patient-care or staffing decisions without hospital governance, validation, security review, and human supervision. The system is intended to support nurse managers and staffing coordinators, not replace clinical or operational judgment.
+SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. It combines an XGBoost ER wait-time forecast, operational pressure modules, an operational memory layer, a nurse registry, a shift schedule, a multi-agent shortage solver, human approval, and an audit log into one Streamlit control-tower workflow.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -43,6 +41,8 @@ ER scenario inputs
 XGBoost wait-time forecast
     ↓
 Operational pressure engine
+    ↓
+Operational memory / similar-event retrieval
     ↓
 Pressure-based staffing adjustment
     ↓
@@ -168,6 +168,7 @@ This tab shows XGBoost performance, baseline comparison, feature importance, and
 flowchart TD
     A[ER Scenario Inputs] --> B[XGBoost Wait-Time Forecast]
     A --> C[Operational Pressure Engine]
+    A --> M[Operational Memory / Similar-Event Retrieval]
 
     C --> C1[Arrival Surge]
     C --> C2[Bed Boarding]
@@ -178,6 +179,7 @@ flowchart TD
 
     B --> D[Pressure-Based Staffing Adjustment]
     C --> D
+    M --> D
 
     D --> E[Multi-Agent Shortage Solver]
     E --> E1[Staffing Planner]
@@ -192,6 +194,7 @@ flowchart TD
 
     H --> I[Dashboard Evidence]
     G --> I
+    H --> M
 ```
 
 
@@ -245,12 +248,16 @@ flowchart TD
     S --> D4
     S --> D5
 
+    R[Stored Prior ER States / Audit History] --> M[Operational Memory / Similar-Event Retrieval]
+    S --> M
+
     P --> E[Pressure-Based Staffing Adjustment]
     D1 --> E
     D2 --> E
     D3 --> E
     D4 --> E
     D5 --> E
+    M --> E
 
     E --> F[Multi-Agent Shortage Solver]
     F --> G[Human Approval]
@@ -258,7 +265,7 @@ flowchart TD
     G --> I[Audit Log]
 ```
 
-This diagram separates the historical/proxy data used to train the XGBoost model from the current demo scenario loaded in the application. The loaded scenario represents the current ER operational state, while the Kaggle-derived data and prototype pressure modules provide the forecasting and decision-support logic used to produce the staffing recommendation.
+This diagram separates the historical/proxy data used to train the XGBoost model from the current demo scenario loaded in the application. The loaded scenario represents the current ER operational state, while the Kaggle-derived data and prototype pressure modules provide the forecasting and decision-support logic used to produce the staffing recommendation. The operational memory layer compares the current scenario against stored prior ER states and audit history to provide similar-event context; it does not store real patient records or protected health information.
 
 ---
 
@@ -322,6 +329,14 @@ Final recommendation: +K
 ```
 
 This makes the recommendation easier to defend because users can see whether the nurse count came from the model, the operational rules, or both.
+
+### Operational memory and similar-event retrieval
+
+SafeStaff AI includes a lightweight operational memory layer that stores prior ER inflow states, staffing decisions, and similar historical events. When a new ER scenario is processed, the system can compare the current state against previous operational patterns to provide additional context for the staffing recommendation.
+
+The memory layer is used for prototype decision support only. It does not store real patient records or protected health information. In the current capstone version, memory is stored in local JSON files and demonstrates how agentic systems can retrieve prior operational context before generating a recommendation.
+
+In production, this memory state should be moved to a managed database with retention rules, access controls, audit logging, and clear separation between short-term session memory and long-term operational history.
 
 ### Multi-agent shortage solver
 
@@ -545,12 +560,13 @@ curl https://YOUR-BACKEND-URL.up.railway.app/api/schedule
 5. Review the demo scenario inputs and operational pressures.
 6. Run **Step 1: ER Wait-Time Risk Assessment**.
 7. Review XGBoost wait-time prediction and ER operational pressure.
-8. Review **Step 2: Pressure-Based Staffing Adjustment**.
-9. Launch the **Multi-Agent Shortage Solver**.
-10. Approve, reject, or override the staffing recommendation.
-11. Confirm the shift schedule updates when approved.
-12. Open the Audit Log and verify the decision was recorded.
-13. Optionally switch between Local Expert System and Live Gemini mode.
+8. Review the memory insight or similar prior ER state when available.
+9. Review **Step 2: Pressure-Based Staffing Adjustment**.
+10. Launch the **Multi-Agent Shortage Solver**.
+11. Approve, reject, or override the staffing recommendation.
+12. Confirm the shift schedule updates when approved.
+13. Open the Audit Log and verify the decision was recorded.
+14. Optionally switch between Local Expert System and Live Gemini mode.
 
 ---
 
@@ -585,8 +601,9 @@ SafeStaff AI is agentic because it performs a multi-step decision workflow inste
 4. Converts pressure into staffing adjustment.
 5. Runs agent-style planning, compliance, safety, finance, and arbiter logic.
 6. Routes high-risk decisions to human approval.
-7. Saves schedule, nurse-hour, and audit updates.
-8. Provides explainability and token/cost transparency.
+7. Retrieves similar prior ER operational states from memory to support context-aware recommendations.
+8. Saves schedule, nurse-hour, and audit updates.
+9. Provides explainability and token/cost transparency.
 
 ---
 
@@ -839,4 +856,4 @@ The current version of SafeStaff AI demonstrates the core idea: combining XGBoos
 
 ## One-line summary
 
-**SafeStaff AI turns ER wait-time forecasts into explainable nurse-staffing decisions by combining XGBoost, operational pressure modules, agent-style reasoning, human approval, and audit logging.**
+**SafeStaff AI turns ER wait-time forecasts into explainable nurse-staffing decisions by combining XGBoost, operational pressure modules, operational memory, agent-style reasoning, human approval, and audit logging.**
