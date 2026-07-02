@@ -183,32 +183,60 @@ flowchart TD
     G --> I
 ```
 
+
 ---
 
 ## Data Sources and Operational Pressure Modules
 
-SafeStaff AI uses public/Kaggle-derived and simulated proxy data for demonstration. The project does not use real patient records, protected health information, or live hospital staffing data.
+SafeStaff AI uses public/Kaggle-derived and simulated proxy data for demonstration. The project does **not** use real patient records, protected health information, or live hospital staffing data.
 
-The main ER wait-time model is based on the Kaggle ER Wait Time dataset by Rivalytics:
+The main ER wait-time forecasting model is based on the Kaggle **ER Wait Time** dataset by Rivalytics:
 
-[Kaggle — ER Wait Time by Rivalytics](https://www.kaggle.com/datasets/rivalytics/er-wait-time)
+[Dataset source: Kaggle — ER Wait Time by Rivalytics](https://www.kaggle.com/datasets/rivalytics/er-wait-time)
 
-This dataset is used to train the XGBoost wait-time forecasting model.
+This dataset is used to train the XGBoost wait-time forecasting model. The model predicts ER wait-time risk from structured operational features such as acuity, timing, patient-flow patterns, and wait-time dynamics.
 
-In addition to the main wait-time dataset, SafeStaff AI includes prototype operational pressure modules. These modules convert ER operations signals into staffing-risk adjustments. They are not separate clinical prediction models; they are research-inspired lookup tables and rule-based pressure signals generated from the Kaggle-derived ER dataset and simulated operational assumptions.
+In addition to the main wait-time dataset, SafeStaff AI includes prototype operational pressure modules. These modules are not separate clinical prediction models. They are research-inspired lookup tables and rule-based pressure signals used to simulate common emergency department staffing pressures.
 
-The operational pressure modules include:
-
-| Module | Purpose | Prototype source |
+| Operational module | What it represents | Prototype source |
 |---|---|---|
-| ESI Seasonal Patterns | Estimates acuity/urgency pressure | Mapped from Kaggle ER urgency levels |
-| Bed Boarding Pressure | Simulates boarding and bed-flow pressure | Proxy generated from wait-time patterns by hour/day/month |
-| Arrival Surge Pressure | Detects patient volume surges | Aggregated from patient visit counts and wait-time patterns |
-| Fast Track Flow | Detects low-acuity bottlenecks | Aggregated from low-urgency visit counts and queue-size proxies |
+| ESI Seasonal Patterns | Acuity and urgency pressure | Mapped from Kaggle-derived ER urgency levels |
+| Bed Boarding Pressure | Boarding and inpatient bed-flow pressure | Proxy generated from wait-time patterns by hour, day, and month |
+| Arrival Surge Pressure | Patient volume surge pressure | Aggregated from visit counts and wait-time patterns |
+| Fast-Track Flow | Low-acuity bottleneck and fast-track pressure | Aggregated from low-urgency visit counts and queue-size proxies |
+| Nurse Fatigue / Call-Out Rules | Staffing safety and coverage pressure | Simulated operational rules for demo staffing constraints |
 
-These modules are stored in the `database/` folder and documented in the app’s Data Sources Registry. They help explain why the final staffing recommendation may be higher than the raw XGBoost wait-time prediction alone.
+These modules are stored in the `database/` folder and documented in the app’s Data Sources Registry. They help explain why the final nurse recommendation may be higher than the raw XGBoost wait-time prediction alone.
 
 Because these are prototype research modules, they would need to be replaced, calibrated, and clinically validated with real hospital operational data before production use.
+
+---
+
+## Data and Decision Flow
+
+```mermaid
+flowchart TD
+    A[Kaggle ER Wait-Time Dataset] --> B[XGBoost Training]
+    B --> C[Wait-Time Prediction]
+
+    D[Kaggle-Derived / Simulated Pressure Modules] --> D1[Arrival Surge]
+    D --> D2[Bed Boarding]
+    D --> D3[ESI / Acuity]
+    D --> D4[Fast-Track Bottleneck]
+    D --> D5[Fatigue and Call-Out Rules]
+
+    C --> E[Pressure-Based Staffing Adjustment]
+    D1 --> E
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    D5 --> E
+
+    E --> F[Multi-Agent Shortage Solver]
+    F --> G[Human Approval]
+    G --> H[Roster Update]
+    G --> I[Audit Log]
+```
 
 ---
 
@@ -339,52 +367,17 @@ Live mode adds richer narrative reasoning and token/cost transparency. If quota,
 
 ---
 
-## Data and privacy statement
-
-This project uses simulated data and public/Kaggle-derived proxy datasets for demonstration. No real patient records are required, and no PHI should be committed to the repository.
-
-Key data files:
-
-```text
-database/db.json
-database/er_wait_time.csv
-database/ER Wait Time Dataset.csv
-database/arrival_surge_pressure.csv
-database/bed_boarding_pressure.csv
-database/esi_seasonal_patterns.csv
-database/fast_track_flow.csv
-database/data_sources.json
-```
-
----
-
 ## Repository structure
 
 ```text
 SafeStaff_AI/
-├── server.py                       # Optional root Gunicorn entry point
-├── requirements.txt                # Python dependencies
-├── backend/
-│   ├── server.py                   # Flask API routes
-│   ├── model.py                    # XGBoost model logic
-│   ├── xgboost_model.pkl           # Saved trained model
-│   ├── model_metrics.json          # Model and baseline metrics
-│   ├── inflow_memory.py            # Memory and similar-event retrieval
-│   ├── research_modules.py         # Operational pressure modules
-│   ├── intervention_costing.py     # Cost calculations
-│   └── agents/
-│       └── adk_agents.py           # Agentic debate/planner logic
-├── frontend/
-│   └── dashboard.py                # Streamlit dashboard
-├── assets/
-│   └── screenshots/                # Application walkthrough images
-├── database/
-│   ├── db.json                     # Mock nurse registry, schedule, logs, audit state
-│   ├── inflow_memory_state.json    # Current inflow memory
-│   ├── inflow_memory_history.json  # Historical memory events
-│   └── *.csv / *.json              # Demo and research-module data
-└── scripts/
-    └── build_research_modules_from_kaggle.py
+├── backend/                 # Flask API, XGBoost model logic, agents, pressure modules
+├── frontend/                # Streamlit dashboard
+├── database/                # Mock nurse registry, schedule, audit logs, demo data
+├── assets/screenshots/      # Application walkthrough images
+├── scripts/                 # Data/module build scripts
+├── requirements.txt         # Python dependencies
+└── server.py                # Root backend entry point for deployment
 ```
 
 ---
