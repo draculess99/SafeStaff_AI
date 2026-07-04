@@ -138,27 +138,49 @@ The primary workflow tab displays the operational staffing flow:
 
 ### 2. System Stress Simulator
 
-The simulator allows testing different ER pressure scenarios, such as flu surge, high boarding, fast-track closure, nurse call-outs, and high occupancy.
+This tab allows hospital administrators to run "what-if" simulations to stress-test the ER's resilience against sudden operational shocks:
+- **Environmental Scenario Presets:** Quick-load predefined crisis scenarios such as a "Blizzard Emergency", "Viral Pandemic Outbreak", or "Standard Weekend Shift".
+- **Custom Stress Parameters:** Manually adjust sliders for Patient Inflow Multipliers, Nurse Call-Out Rates (sick percentage), Acuity Shifts, and Specialist Availability.
+- **Real-Time KPI Deltas:** Instantly displays the difference between the base predicted wait time and the stressed predicted wait time, alongside the updated risk level and estimated additional nurses needed.
+- **Cost vs. Risk Curve:** A visual chart demonstrating the intersection of stressed roster costs and patient safety risk.
+- **Scenario Export:** A one-click button to push the simulated stressed parameters directly into the primary Roster & Shortage Solver for AI resolution.
 
 ### 3. Explainability & Token Logs
 
-This tab surfaces model reasoning, token usage, local-vs-live mode, and evidence for why recommendations changed.
+This tab lifts the hood on how the system reaches its conclusions and tracks the cost of AI reasoning:
+- **Resolution History Logs:** A drop-down selection of historical staffing resolutions, showing the timestamp, status, and total staffing cost for each event.
+- **Narrative Explainability:** A plain-English narrative detailing exactly why a specific recommendation was made, what constraints were applied, and why certain nurses were selected over others.
+- **Live API Token Usage & Analytics:** Detailed cost tracking for the Live Groq/Gemini API calls, including the specific model used, fallback models attempted, total prompt/response tokens consumed, and the estimated API cost in USD.
 
 ### 4. Audit Log
 
-The audit log records approvals, rejections, overrides, staffing recommendations, token mode, and governance status.
+The audit log provides a persistent, verifiable trail of all human-in-the-loop governance decisions across sessions:
+- **Comprehensive Event Tracking:** Records every staffing event, including shift details, predicted wait times, risk levels, and the exact number of nurses recommended vs. approved.
+- **Human Override Logging:** Captures any manual overrides made by the user, including the specific stage the override occurred, the reason provided by the user, and exactly which nurses were rejected.
+- **Compliance & Financial Tracking:** Logs any compliance warnings triggered during the event, whether formal approval was required, and the final estimated cost.
+- **Exportable Records:** Displays the full history in an interactive data table with a one-click option to download the raw `audit_log.csv` for external compliance reviews.
 
 ### 5. Research & Validation
 
-This tab documents prototype validation, research modules, and operational pressure source checks.
+This tab serves as the technical documentation and validation center for the prototype:
+- **Intervention Frameworks:** Details the specific research modules and operational frameworks powering the decision engine.
+- **Validation Checks:** Documents the data provenance and logic checks to prove the system's reasoning is grounded in realistic hospital operations.
+- **Execution Paths:** Explains the architecture differences between the Local Expert System fallback mode and the Live API execution paths.
 
 ### 6. AI Committee Debate & Planner
 
-This tab shows the agentic reasoning layer, including planner, compliance, patient safety, finance, and final arbiter logic.
-
+This tab serves as the transparent "brain" of the system, showcasing the agentic reasoning layer that drives final staffing decisions. It features:
+- **Context & Risk Analysis Metrics:** A breakdown of the XGBoost predicted wait, base staffing risk, individual pressure adjustments (ESI, Boarding, Arrival Surge, Fast-Track), and the final Adjusted Operational Risk score.
+- **Dynamic Agent Activation:** A real-time audit of which specialized AI agents were activated for the scenario and their specific focus (e.g., Patient Safety, Financial Auditor).
+- **Committee Debate Summary:** A detailed, multi-agent debate weighing the trade-offs of the recommendation. When running in **Live Groq/Gemini API Mode**, this section injects a rich, multi-paragraph LLM debate highlighting conflicting operational priorities (Staffing vs. Compliance, Safety vs. Cost).
+- **ER Staffing Intervention Planner:** A costed, actionable list of alternative interventions (e.g., opening a fast-track area, floating a triage nurse) complete with target bottlenecks, expected wait reductions, formulas, and assumption sources.
+- **Financial Breakdown:** Aggregated totals for roster staffing costs, intervention costs, and total estimated operational cost.
 ### 7. Model Performance
 
-This tab shows XGBoost performance, baseline comparison, feature importance, and model evaluation results.
+This tab provides visual proof of the underlying Machine Learning model's accuracy and reliability:
+- **Hero Metrics:** Displays key performance indicators from the XGBoost training phase, including R² Score, Mean Absolute Error (MAE), and Risk Band Accuracy.
+- **Feature Importance:** An interactive bar chart revealing which operational variables (e.g., patient volume, acuity levels) have the highest impact on wait-time predictions.
+- **Prediction Accuracy:** An interactive scatterplot comparing the model's predicted wait times against actual historical wait times, demonstrating the model's precision across different clinical risk bands.
 
 ---
 
