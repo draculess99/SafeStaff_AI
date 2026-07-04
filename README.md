@@ -150,7 +150,7 @@ This tab allows hospital administrators to run "what-if" simulations to stress-t
 This tab lifts the hood on how the system reaches its conclusions and tracks the cost of AI reasoning:
 - **Resolution History Logs:** A drop-down selection of historical staffing resolutions, showing the timestamp, status, and total staffing cost for each event.
 - **Narrative Explainability:** A plain-English narrative detailing exactly why a specific recommendation was made, what constraints were applied, and why certain nurses were selected over others.
-- **Live API Token Usage & Analytics:** Detailed cost tracking for the Live Groq/Gemini API calls, including the specific model used, fallback models attempted, total prompt/response tokens consumed, and the estimated API cost in USD.
+- **Live API Token Usage & Analytics:** Detailed cost tracking for the Live Gemini API calls, including the specific model used, fallback models attempted, total prompt/response tokens consumed, and the estimated API cost in USD.
 
 ### 4. Audit Log
 
