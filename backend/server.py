@@ -959,7 +959,7 @@ if __name__ == "__main__":
     xgb_model = payload["model"]
 
     host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", "5000"))
+    port = 5000
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     app.run(host=host, port=port, debug=debug, use_reloader=False)
 
