@@ -33,6 +33,7 @@ def main():
     # Force Streamlit to use the locally running backend
     env = os.environ.copy()
     env["API_BASE_URL"] = "http://127.0.0.1:5000"
+    env["BACKEND_URL"] = "http://127.0.0.1:5000"
     
     frontend_script = os.path.join("frontend", "dashboard.py")
     frontend_proc = subprocess.Popen(
