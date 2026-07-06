@@ -26,15 +26,22 @@ def main():
     # 3. Wait for Flask to boot up
     time.sleep(2)
 
-    # 4. Launch Streamlit Frontend Dashboard (Port 8501)
-    print("Starting Streamlit Dashboard on http://localhost:8501...")
+    # 4. Launch Streamlit Frontend Dashboard (Port $PORT or 8501)
+    port = os.environ.get("PORT", "8501")
+    print(f"Starting Streamlit Dashboard on http://0.0.0.0:{port}...")
+    
+    # Force Streamlit to use the locally running backend
+    env = os.environ.copy()
+    env["API_BASE_URL"] = "http://127.0.0.1:5000"
+    
     frontend_script = os.path.join("frontend", "dashboard.py")
     frontend_proc = subprocess.Popen(
-        [sys.executable, "-m", "streamlit", "run", frontend_script]
+        [sys.executable, "-m", "streamlit", "run", frontend_script, "--server.port", port, "--server.address", "0.0.0.0"],
+        env=env
     )
 
     print("\nSafeStaff AI is running successfully!")
-    print("To open the UI, navigate to http://localhost:8501 in your browser.")
+    print(f"To open the UI, navigate to http://localhost:{port} in your browser.")
     print("Press Ctrl+C to terminate both servers.")
     print("=========================================================\n")
 
