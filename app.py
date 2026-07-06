@@ -19,8 +19,12 @@ def main():
 
     # 2. Launch Flask Backend (Port 5000)
     print("\nStarting Flask API Backend on http://127.0.0.1:5000...")
+    backend_env = os.environ.copy()
+    backend_env["PORT"] = "5000"  # Force internal port for Flask
+    
     backend_proc = subprocess.Popen(
-        [sys.executable, "-m", "backend.server"]
+        [sys.executable, "-m", "backend.server"],
+        env=backend_env
     )
 
     # 3. Wait for Flask to boot up
