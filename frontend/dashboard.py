@@ -2900,7 +2900,10 @@ if workflow_page == "📋 Roster & Shortage\nSolver":
             st.info("Because the internal candidate pool does not fully cover the shortage, the recommended supervisor action is escalation.")
             prior_cand_action = st.session_state.get("cand_action_radio")
             if prior_cand_action is None or prior_cand_action == "Accept System Recommendation":
-                st.session_state.cand_action_radio = "Request More Candidates / Escalate"
+                if len(system_rec_nurses) == 4:
+                    st.session_state.cand_action_radio = "Accept System Recommendation"
+                else:
+                    st.session_state.cand_action_radio = "Request More Candidates / Escalate"
 
         cand_action_default = st.session_state.get("cand_action_radio", st.session_state.candidate_override_action)
         cand_action = st.radio(
