@@ -8,6 +8,15 @@ from flask import Flask, jsonify, request
 from database.database import JSONDatabase
 from backend.model import predict_wait_time, train_model, CSV_PATH, MODEL_PATH, load_model_payload, clear_model_payload_cache
 from typing import Dict, Any, List
+from backend.rag_engine import (
+    add_rag_document,
+    build_rag_context_block,
+    delete_rag_document,
+    list_rag_documents,
+    rag_status,
+    reset_rag_documents,
+    search_rag,
+)
 
 app = Flask(__name__)
 db = JSONDatabase()
@@ -29,14 +38,25 @@ def _build_live_debate_prompt(context, rec_nurses, rejected_candidates):
             rejected_ids.append(r.get("id", str(r)))
         else:
             rejected_ids.append(str(r))
+
+    rag_block = "No RAG evidence supplied."
+    if isinstance(context, dict):
+        rag_evidence = context.get("rag_evidence") or {}
+        if isinstance(rag_evidence, dict):
+            rag_block = rag_evidence.get("context_block") or rag_block
+
     return f"""
 Hospital Scenario Context:
 {json.dumps(context, indent=2, default=str)}
+
+Retrieved Policy / SOP Evidence for RAG Grounding:
+{rag_block}
 
 Recommended Nurses by Cost & Fatigue-Aware Optimizer: {rec_nurses}
 Rejected Candidates (Failed Compliance): {rejected_ids}
 
 Please act as the following agents and generate a debate.
+Use the retrieved policy/SOP evidence when it is relevant, cite it as [RAG 1], [RAG 2], etc., and do not invent policies not present in the retrieved evidence.
 Format your response using these exact headings:
 
 PART 1: STAFFING VS COMPLIANCE
@@ -266,6 +286,49 @@ def gemini_models():
 def api_health():
     return jsonify({"status": "ok", "service": "SafeStaff AI backend"})
 
+@app.route("/api/rag/status", methods=["GET"])
+def api_rag_status():
+    return jsonify(rag_status())
+
+@app.route("/api/rag/documents", methods=["GET"])
+def api_rag_documents():
+    return jsonify({"success": True, "documents": list_rag_documents(), **rag_status()})
+
+@app.route("/api/rag/documents", methods=["POST"])
+def api_add_rag_document():
+    try:
+        data = request.json or {}
+        doc = add_rag_document(
+            title=data.get("title") or "Untitled RAG document",
+            text=data.get("text") or "",
+            source=data.get("source") or "Manual upload",
+            category=data.get("category") or "Policy",
+        )
+        return jsonify({"success": True, "document": {k: v for k, v in doc.items() if k != "text"}, **rag_status()}), 201
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+@app.route("/api/rag/documents/<doc_id>", methods=["DELETE"])
+def api_delete_rag_document(doc_id):
+    deleted = delete_rag_document(doc_id)
+    return jsonify({"success": deleted, "deleted": deleted, **rag_status()})
+
+@app.route("/api/rag/search", methods=["POST"])
+def api_rag_search():
+    try:
+        data = request.json or {}
+        query = data.get("query") or ""
+        top_k = int(data.get("top_k", 5))
+        category = data.get("category") or None
+        results = search_rag(query, top_k=top_k, category=category)
+        return jsonify({"success": True, "query": query, "results": results, **rag_status()})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+@app.route("/api/rag/reset", methods=["POST"])
+def api_reset_rag_documents():
+    return jsonify({"success": True, **reset_rag_documents()})
+
 @app.route("/api/nurses", methods=["GET"])
 def get_nurses():
     """Return the nurse registry, auto-seeding demo data if Railway starts empty."""
@@ -431,6 +494,27 @@ def resolve_shortage():
             }
         )
         
+        rag_evidence = {}
+        if data.get("enable_rag", True):
+            rag_evidence = build_rag_context_block(
+                {
+                    "scenario": {
+                        "date": date,
+                        "shift_type": shift_type,
+                        "department": department,
+                        "acuity_level": acuity_level,
+                        "required_nurses": required_nurses,
+                        "patient_volume_multiplier": patient_volume_multiplier,
+                        "base_wait_time": float(data.get("base_wait_time", 120.0)),
+                        "preset_data": data.get("preset_data")
+                    },
+                    "committee_evidence": adk_result.get("committee_evidence", {}),
+                    "explainability_narrative": adk_result.get("explainability_narrative", "")
+                },
+                top_k=int(data.get("rag_top_k", 5)),
+                query=data.get("rag_query")
+            )
+        
         live_debate = None
         if data.get("enable_llm_debate", False):
             live_context = {
@@ -447,6 +531,8 @@ def resolve_shortage():
                 "committee_evidence": adk_result.get("committee_evidence", {}),
                 "explainability_narrative": adk_result.get("explainability_narrative", "")
             }
+            if rag_evidence:
+                live_context["rag_evidence"] = rag_evidence
             live_debate = _call_live_gemini_debate(
                 live_context,
                 adk_result.get("resolved_nurses", []),
@@ -477,6 +563,7 @@ def resolve_shortage():
             "resolution_steps": adk_result["resolution_steps"],
             "explainability_narrative": adk_result["explainability_narrative"],
             "committee_evidence": adk_result.get("committee_evidence", {}),
+            "rag_evidence": rag_evidence,
             "active_agents": adk_result.get("active_agents", []),
             "intervention_plan": adk_result.get("intervention_plan", []),
             "operational_signal_impact_summary": adk_result.get("operational_signal_impact_summary", ""),
@@ -498,6 +585,7 @@ def resolve_shortage():
         return jsonify({
             "success": True,
             "log": log_entry,
+            "rag_evidence": rag_evidence,
             "live_usage": {
                 "llm_calls": (live_debate or {}).get("llm_calls", 0),
                 "prompt_tokens": (live_debate or {}).get("prompt_tokens", 0),
@@ -650,6 +738,8 @@ def generate_live_debate():
         rec_nurses = data.get("rec_nurses", [])
         rejected_candidates = data.get("rejected_candidates", [])
         model_target = data.get("model") or os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+        if data.get("enable_rag", True) and isinstance(context, dict) and not context.get("rag_evidence"):
+            context["rag_evidence"] = build_rag_context_block(context, top_k=int(data.get("rag_top_k", 5)), query=data.get("rag_query"))
 
         debate = _call_live_gemini_debate(context, rec_nurses, rejected_candidates, model_target)
         status_code = 200 if debate.get("success") else 500

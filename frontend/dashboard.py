@@ -180,7 +180,7 @@ def on_demo_scenario_change():
         # Demo scenario presets belong to the main roster/shortage workflow.
         # Keep the user anchored there after a preset is loaded, even if they
         # were previously viewing Stress, Explainability, Audit, etc.
-        st.session_state.workflow_page = "📋 Roster & Shortage Solver"
+        st.session_state.workflow_page = "📋 Roster & Shortage\nSolver"
 
         data = demo_scenarios[sel]
         st.session_state.scen_date = data["date"]
@@ -293,14 +293,15 @@ st.markdown("""
        - hover = small lift, brighter border, no distracting animation */
     div[role="radiogroup"] {
         display: flex !important;
-        flex-wrap: nowrap !important;
-        gap: 4px !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        row-gap: 8px !important;
         align-items: stretch !important;
         margin-bottom: 18px !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        white-space: nowrap !important;
-        padding: 2px 2px 6px 2px !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        white-space: normal !important;
+        padding: 2px 2px 10px 2px !important;
         scrollbar-width: thin !important;
     }
 
@@ -308,12 +309,13 @@ st.markdown("""
         background-color: rgba(15, 23, 42, 0.88) !important;
         border: 1px solid rgba(148, 163, 184, 0.22) !important;
         border-radius: 8px !important;
-        padding: 6px 9px !important;
+        padding: 5px 8px !important;
         margin-right: 0 !important;
-        min-height: 34px !important;
+        min-height: 32px !important;
         display: flex !important;
         align-items: center !important;
         flex: 0 0 auto !important;
+        max-width: 100% !important;
         transform: translateY(0) !important;
         transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease !important;
     }
@@ -343,7 +345,7 @@ st.markdown("""
     }
 
     /* Agentic AI feature tab: subtle purple accent when inactive. */
-    div[role="radiogroup"] label:nth-of-type(6):not(:has(input:checked)) {
+    div[role="radiogroup"] label:nth-of-type(7):not(:has(input:checked)) {
         border-color: rgba(168, 85, 247, 0.42) !important;
         background-color: rgba(88, 28, 135, 0.10) !important;
     }
@@ -358,12 +360,13 @@ st.markdown("""
     }
 
     div[role="radiogroup"] label p {
-        font-size: 0.80rem !important;
-        line-height: 1.05rem !important;
+        font-size: 0.76rem !important;
+        line-height: 1rem !important;
         font-weight: 700 !important;
         color: #e5e7eb !important;
         margin: 0 !important;
-        white-space: nowrap !important;
+        white-space: pre-line !important;
+        text-align: center !important;
     }
 
     div[role="radiogroup"] label:has(input:checked) p {
@@ -967,6 +970,60 @@ def get_inflow_history():
     except Exception:
         return []
 
+@st.cache_data(ttl=30)
+def get_rag_documents():
+    try:
+        response = requests.get(f"{API_BASE_URL}/api/rag/documents", timeout=5)
+        return response.json() if response.ok else {"documents": [], "document_count": 0, "chunk_count": 0}
+    except Exception:
+        return {"documents": [], "document_count": 0, "chunk_count": 0}
+
+def clear_rag_cache():
+    try:
+        get_rag_documents.clear()
+    except Exception:
+        pass
+
+def rag_search(query, top_k=5):
+    try:
+        response = requests.post(f"{API_BASE_URL}/api/rag/search", json={"query": query, "top_k": top_k}, timeout=10)
+        return response.json() if response.ok else {"success": False, "results": [], "error": response.text}
+    except Exception as e:
+        return {"success": False, "results": [], "error": str(e)}
+
+def add_rag_document(title, text, source="Manual upload", category="Policy"):
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/api/rag/documents",
+            json={"title": title, "text": text, "source": source, "category": category},
+            timeout=20,
+        )
+        data = response.json() if response.headers.get("content-type", "").startswith("application/json") else {"success": False, "error": response.text}
+        if response.ok and data.get("success"):
+            clear_rag_cache()
+        return data
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def delete_rag_document(doc_id):
+    try:
+        response = requests.delete(f"{API_BASE_URL}/api/rag/documents/{doc_id}", timeout=10)
+        data = response.json() if response.ok else {"success": False, "error": response.text}
+        if data.get("success"):
+            clear_rag_cache()
+        return data
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def reset_rag_documents():
+    try:
+        response = requests.post(f"{API_BASE_URL}/api/rag/reset", timeout=10)
+        data = response.json() if response.ok else {"success": False, "error": response.text}
+        clear_rag_cache()
+        return data
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 def add_audit_log(entry):
     try:
         response = requests.post(f"{API_BASE_URL}/api/audit_logs", json=entry, timeout=15)
@@ -1487,6 +1544,21 @@ with st.sidebar.expander("🪙 Token Usage / Low-Token Mode", expanded=True):
     else:
         st.caption("All rules, XGBoost calculations, feature importances, and debates run locally to minimize API token consumption.")
 
+with st.sidebar.expander("📚 RAG Policy Grounding", expanded=False):
+    st.checkbox(
+        "Use RAG evidence in staffing agents",
+        value=True,
+        key="enable_rag",
+        help="When enabled, the backend retrieves relevant policy/SOP chunks and injects them into the agent/Gemini debate context.",
+    )
+    st.session_state.rag_top_k = st.slider("Evidence chunks", 2, 8, int(st.session_state.get("rag_top_k", 5)))
+    rag_status_payload = get_rag_documents()
+    st.write(f"**Documents**: {rag_status_payload.get('document_count', 0)}")
+    st.write(f"**Chunks**: {rag_status_payload.get('chunk_count', 0)}")
+    st.caption("Best for hospital staffing policies, union/overtime rules, SOPs, surge playbooks, and triage notes.")
+    if st.button("Refresh RAG status", key="refresh_rag_status_btn"):
+        clear_rag_cache()
+        st.rerun()
 
 
 # Main Layout
@@ -1749,12 +1821,13 @@ st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; mar
 workflow_page = st.radio(
     "Workflow",
     [
-        "📋 Roster & Shortage Solver",
+        "📋 Roster & Shortage\nSolver",
         "⚡ System Stress Simulator",
+        "📚 RAG Knowledge Base",
         "🔍 Explainability & Token Logs",
         "📝 Audit Log",
         "🔬 Research & Validation",
-        "🏛️ AI Committee Debate & Planner",
+        "🏛️ AI Committee Debate\nPlanner",
         "📈 Model Performance",
     ],
     horizontal=True,
@@ -1765,9 +1838,9 @@ workflow_page = st.radio(
 
 # Selected workflow panel banner: makes the content area feel themed, not just the tab button.
 WORKFLOW_PANEL_META = {
-    "📋 Roster & Shortage Solver": {
+    "📋 Roster & Shortage\nSolver": {
         "class": "roster",
-        "title": "📋 Roster & Shortage Solver",
+        "title": "📋 Roster & Shortage\nSolver",
         "help": "Primary operating panel for shift schedule, nurse registry, shortage resolution, approval, and roster updates.",
         "accent": "#60a5fa",
         "soft": "rgba(37, 99, 235, 0.16)",
@@ -1780,6 +1853,14 @@ WORKFLOW_PANEL_META = {
         "accent": "#fb923c",
         "soft": "rgba(249, 115, 22, 0.15)",
         "border": "rgba(251, 146, 60, 0.34)",
+    },
+    "📚 RAG Knowledge Base": {
+        "class": "rag",
+        "title": "📚 RAG Knowledge Base",
+        "help": "Upload and search policy/SOP evidence that grounds the staffing agents and Gemini debate.",
+        "accent": "#38bdf8",
+        "soft": "rgba(56, 189, 248, 0.13)",
+        "border": "rgba(56, 189, 248, 0.32)",
     },
     "🔍 Explainability & Token Logs": {
         "class": "explain",
@@ -1805,9 +1886,9 @@ WORKFLOW_PANEL_META = {
         "soft": "rgba(125, 211, 252, 0.12)",
         "border": "rgba(125, 211, 252, 0.26)",
     },
-    "🏛️ AI Committee Debate & Planner": {
+    "🏛️ AI Committee Debate\nPlanner": {
         "class": "ai",
-        "title": "🏛️ AI Committee Debate & Planner",
+        "title": "🏛️ AI Committee Debate\nPlanner",
         "help": "Agentic AI review panel for staffing recommendations, veto logic, and human-in-the-loop decisions.",
         "accent": "#a855f7",
         "soft": "rgba(168, 85, 247, 0.15)",
@@ -1822,7 +1903,7 @@ WORKFLOW_PANEL_META = {
         "border": "rgba(52, 211, 153, 0.30)",
     },
 }
-_panel = WORKFLOW_PANEL_META.get(workflow_page, WORKFLOW_PANEL_META["📋 Roster & Shortage Solver"])
+_panel = WORKFLOW_PANEL_META.get(workflow_page, WORKFLOW_PANEL_META["📋 Roster & Shortage\nSolver"])
 st.markdown(
     f"""
     <style>
@@ -1842,7 +1923,7 @@ st.markdown(
 )
 
 # Tab 1: Roster and Shortage Solver
-if workflow_page == "📋 Roster & Shortage Solver":
+if workflow_page == "📋 Roster & Shortage\nSolver":
     if st.session_state.get("last_summary"):
         s = st.session_state.last_summary
         st.markdown(f"""
@@ -2376,6 +2457,8 @@ if workflow_page == "📋 Roster & Shortage Solver":
                 "visithour": hour_map.get(scen['shift_type'], 12),
                 "base_wait_time": float(st.session_state.get("pred_wait", 0)),
                 "enable_llm_debate": enable_llm,
+                "enable_rag": bool(st.session_state.get("enable_rag", True)),
+                "rag_top_k": int(st.session_state.get("rag_top_k", 5)),
                 "gemini_model": st.session_state.get("model_option", "gemini-2.0-flash"),
                 "preset_data": preset_info
             }
@@ -2387,6 +2470,10 @@ if workflow_page == "📋 Roster & Shortage Solver":
                     
                     if result.get("success"):
                         st.session_state.pending_log = result["log"]
+                        st.session_state.last_rag_evidence = result.get("rag_evidence") or st.session_state.pending_log.get("rag_evidence", {})
+                        rag_hits = st.session_state.last_rag_evidence.get("results", []) if isinstance(st.session_state.last_rag_evidence, dict) else []
+                        if st.session_state.get("enable_rag", True):
+                            st.caption(f"📚 RAG grounding retrieved {len(rag_hits)} policy/SOP evidence chunks for this recommendation.")
 
                         # Preferred path: the backend now performs the Live Gemini call inside
                         # /api/resolve_shortage when Live Gemini mode is enabled. Capture that
@@ -2440,7 +2527,9 @@ if workflow_page == "📋 Roster & Shortage Solver":
                                     },
                                     "rec_nurses": st.session_state.pending_log.get("resolved_nurses", []),
                                     "rejected_candidates": st.session_state.pending_log.get("rejected_candidates", []),
-                                    "model": st.session_state.get("model_option", "gemini-2.0-flash")
+                                    "model": st.session_state.get("model_option", "gemini-2.0-flash"),
+                                    "enable_rag": bool(st.session_state.get("enable_rag", True)),
+                                    "rag_top_k": int(st.session_state.get("rag_top_k", 5))
                                 }
                                 debate_res = requests.post(f"{API_BASE_URL}/api/generate_live_debate", json=live_payload, timeout=60)
                                 debate_json = debate_res.json()
@@ -2797,19 +2886,32 @@ if workflow_page == "📋 Roster & Shortage Solver":
         st.markdown("**Why selected:**")
         st.write("- Available for the selected shift\n- Within fatigue threshold\n- No compliance violation\n- Cost/fatigue optimized\n- Matches staffing need")
         
+        cand_action_options = [
+            "Accept System Recommendation",
+            "Select Alternative Approved Nurse",
+            "Exclude Recommended Nurse and Rerun Selection",
+            "Request More Candidates / Escalate"
+        ]
+
+        # If the internal nurse pool cannot fully cover the shortage, do not make
+        # "Accept System Recommendation" look like the safe/default operational path.
+        # The correct governance posture is escalation.
+        if unmet_gap > 0:
+            st.info("Because the internal candidate pool does not fully cover the shortage, the recommended supervisor action is escalation.")
+            prior_cand_action = st.session_state.get("cand_action_radio")
+            if prior_cand_action is None or prior_cand_action == "Accept System Recommendation":
+                st.session_state.cand_action_radio = "Request More Candidates / Escalate"
+
+        cand_action_default = st.session_state.get("cand_action_radio", st.session_state.candidate_override_action)
         cand_action = st.radio(
             "Supervisor Candidate Action:",
-            [
-                "Accept System Recommendation",
-                "Select Alternative Approved Nurse",
-                "Exclude Recommended Nurse and Rerun Selection",
-                "Request More Candidates / Escalate"
-            ],
+            cand_action_options,
+            index=cand_action_options.index(cand_action_default) if cand_action_default in cand_action_options else 0,
             key="cand_action_radio"
         )
-        
+
         st.session_state.candidate_override_action = cand_action
-        
+
         effective_rec_nurses = system_rec_nurses.copy()
         
         if cand_action == "Accept System Recommendation":
@@ -3005,14 +3107,34 @@ if workflow_page == "📋 Roster & Shortage Solver":
         st.caption("Review the staffing proposal, candidate override status, before/after impact, compliance checks, fatigue checks, and cost impact before committing the final roster decision.")
         
         ga_opt_text = "👍 Approve Optimized Roster"
+        standard_text = "👍 Approve Standard Roster"
         reject_text = "👎 Reject Recommendation"
-        
+        escalate_text = "⚠️ Escalate to CNO / Staffing Manager"
+
         committee_rec_nurses = log_data.get("committee_evidence", {}).get("research_adjusted_nurses_needed", 0)
         adj_risk = log_data.get("committee_evidence", {}).get("adjusted_operational_risk", "Low")
-        
-        # If they requested escalation early, default to Escalate or Reject
-        if st.session_state.candidate_override_action == "Request More Candidates / Escalate":
-            default_index = 3 # Escalate
+        unmet_gap_final = int(log_data.get("unmet_nurse_gap", 0) or 0)
+        escalation_plan_final = log_data.get(
+            "escalation_recommendation",
+            "Activate float pool, agency/registry support, or escalate to the staffing supervisor."
+        )
+
+        # If the model cannot fill the full shortage internally, the final screen
+        # must recommend escalation instead of making approval look correct.
+        approval_blocked_by_gap = unmet_gap_final > 0
+        if approval_blocked_by_gap:
+            ga_opt_text += " (Not recommended — unresolved staffing gap)"
+            standard_text += " (Not recommended — unresolved staffing gap)"
+            escalate_text += " (⭐ System Recommended — unmet staffing gap)"
+            default_index = 3
+            st.error(
+                f"⚠️ Final governance check: internal candidates are short by **{unmet_gap_final} nurse(s)**. "
+                "A complete optimized roster cannot be approved until the staffing gap is resolved."
+            )
+            st.warning(f"📣 Recommended final action: **Escalate** — {escalation_plan_final}")
+        elif st.session_state.candidate_override_action == "Request More Candidates / Escalate":
+            escalate_text += " (⭐ System Recommended)"
+            default_index = 3
         elif committee_rec_nurses > 0 or adj_risk in ["High", "Critical"]:
             ga_opt_text += " (⭐ System Recommended)"
             default_index = 0
@@ -3022,20 +3144,34 @@ if workflow_page == "📋 Roster & Shortage Solver":
         else:
             ga_opt_text += " (⭐ System Recommended)"
             default_index = 0
-            
+
+        human_decision_options = [
+            ga_opt_text,
+            standard_text,
+            reject_text,
+            escalate_text,
+            "✏️ Final Override: Select Alternative Approved Nurse"
+        ]
+
+        # Streamlit keeps radio state across reruns. If a previous run selected an
+        # approval option, force the default back to escalation when a new unmet
+        # staffing gap is detected.
+        if approval_blocked_by_gap:
+            prior_human_decision = st.session_state.get("human_decision_radio")
+            if (
+                prior_human_decision is None
+                or "Approve" in str(prior_human_decision)
+                or prior_human_decision not in human_decision_options
+            ):
+                st.session_state.human_decision_radio = escalate_text
+
         human_decision = st.radio(
             "Select your decision:",
-            [
-                ga_opt_text,
-                "👍 Approve Standard Roster",
-                reject_text,
-                "⚠️ Escalate to CNO / Staffing Manager",
-                "✏️ Final Override: Select Alternative Approved Nurse"
-            ],
+            human_decision_options,
             index=default_index,
             key="human_decision_radio"
         )
-        
+
         override_nurse = None
         override_reason = ""
         
@@ -3145,6 +3281,13 @@ if workflow_page == "📋 Roster & Shortage Solver":
                 "synthetic_data_limitation_statement": "This report is based on the Kaggle ER Wait Time synthetic dataset and is for demonstration purposes only."
             }
             
+            if "Approve" in human_decision and int(log_data.get("unmet_nurse_gap", 0) or 0) > 0:
+                st.error(
+                    "Approval blocked: the staffing gap is still unresolved. "
+                    "Choose Escalate to CNO / Staffing Manager, or use Final Override only after selecting enough qualified approved nurses."
+                )
+                st.stop()
+
             if "Approve" in human_decision:
                 app_res = requests.post(f"{API_BASE_URL}/api/approve_resolution", json={
                     "log_id": log_data["id"],
@@ -3464,6 +3607,105 @@ if workflow_page == "⚡ System Stress Simulator":
         st.caption("Notice how the 'Sweet Spot' is reached when the Clinical Risk drops (representing safe wait times) without causing a massive spike in Roster Costs.")
 
 # Tab 3: Explainability and Token Logs
+if workflow_page == "📚 RAG Knowledge Base":
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown("### 📚 Retrieval-Augmented Generation Layer")
+    st.write(
+        "This is where SafeStaff AI becomes more than a generic staffing optimizer. "
+        "The app can retrieve local hospital policy, overtime rules, surge SOPs, union constraints, "
+        "and triage playbooks, then feed the most relevant chunks into the AI committee debate."
+    )
+
+    status_payload = get_rag_documents()
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Documents", status_payload.get("document_count", 0))
+    c2.metric("Search Chunks", status_payload.get("chunk_count", 0))
+    c3.metric("RAG Enabled", "Yes" if st.session_state.get("enable_rag", True) else "No")
+
+    st.markdown("#### 1️⃣ Add policy / SOP evidence")
+    st.caption("Supported in this lightweight version: .txt, .md, .csv, and .json files, or pasted text. For PDFs, copy the policy text into the text box first.")
+    upload = st.file_uploader("Upload policy/SOP text", type=["txt", "md", "csv", "json"], key="rag_upload_file")
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        rag_title = st.text_input("Document title", value=(upload.name if upload else ""), key="rag_doc_title")
+        pasted_text = st.text_area("Or paste policy/SOP text here", height=180, key="rag_pasted_text")
+    with col_b:
+        rag_category = st.selectbox("Category", ["Policy", "Staffing SOP", "Compliance", "Patient Flow", "Fast Track", "Union Rules", "Triage", "Other"], key="rag_category")
+        rag_source = st.text_input("Source", value="Manual upload", key="rag_source")
+
+    upload_text = ""
+    if upload is not None:
+        try:
+            upload_text = upload.getvalue().decode("utf-8", errors="ignore")
+        except Exception:
+            upload_text = ""
+    candidate_text = pasted_text.strip() or upload_text.strip()
+
+    if st.button("➕ Add to RAG Knowledge Base", type="primary", use_container_width=True, key="add_rag_doc_btn"):
+        if not candidate_text:
+            st.warning("Add text first by uploading a text file or pasting policy/SOP content.")
+        else:
+            add_result = add_rag_document(
+                title=rag_title or (upload.name if upload else "Untitled policy document"),
+                text=candidate_text,
+                source=rag_source or "Manual upload",
+                category=rag_category,
+            )
+            if add_result.get("success"):
+                st.success("RAG document added and chunked successfully.")
+                clear_rag_cache()
+                st.rerun()
+            else:
+                st.error(add_result.get("error", "Could not add document."))
+
+    st.markdown("---")
+    st.markdown("#### 2️⃣ Test retrieval")
+    default_query = "winter surge ED nurse call-outs boarding fast track overtime compliance"
+    rag_query = st.text_input("Search query", value=default_query, key="rag_search_query")
+    top_k = st.slider("Top K evidence chunks", 1, 10, int(st.session_state.get("rag_top_k", 5)), key="rag_search_top_k")
+    if st.button("🔎 Search RAG evidence", use_container_width=True, key="rag_search_btn"):
+        search_result = rag_search(rag_query, top_k=top_k)
+        if search_result.get("success"):
+            results = search_result.get("results", [])
+            st.session_state.last_manual_rag_search = results
+            if not results:
+                st.info("No evidence chunks matched that query.")
+        else:
+            st.error(search_result.get("error", "RAG search failed."))
+
+    for i, item in enumerate(st.session_state.get("last_manual_rag_search", []), start=1):
+        with st.expander(f"[RAG {i}] {item.get('title')} · score {item.get('score')}", expanded=(i == 1)):
+            st.write(f"**Category:** {item.get('category')}  |  **Source:** {item.get('source')}")
+            st.write(item.get("text", ""))
+
+    st.markdown("---")
+    st.markdown("#### 3️⃣ Current knowledge base")
+    documents = get_rag_documents().get("documents", [])
+    if documents:
+        st.dataframe(pd.DataFrame(documents), use_container_width=True)
+        delete_id = st.selectbox("Delete document", [""] + [d.get("id", "") for d in documents], format_func=lambda x: "Select a document..." if not x else x, key="rag_delete_select")
+        if st.button("🗑️ Delete selected RAG document", use_container_width=True, key="rag_delete_btn") and delete_id:
+            delete_result = delete_rag_document(delete_id)
+            if delete_result.get("success"):
+                st.success("Document deleted.")
+                clear_rag_cache()
+                st.rerun()
+            else:
+                st.error(delete_result.get("error", "Could not delete document."))
+    else:
+        st.info("No RAG documents found. Use the reset button below to seed demo policies or upload your own.")
+
+    if st.button("♻️ Reset demo RAG policies", use_container_width=True, key="rag_reset_demo_btn"):
+        reset_result = reset_rag_documents()
+        if reset_result.get("success"):
+            st.success("Demo RAG policies restored.")
+            clear_rag_cache()
+            st.rerun()
+        else:
+            st.error(reset_result.get("error", "Could not reset RAG documents."))
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 if workflow_page == "🔍 Explainability & Token Logs":
     st.subheader("🔍 Explainability Reports & Cost Analytics")
     
@@ -3789,7 +4031,7 @@ if workflow_page == "🔬 Research & Validation":
         st.info("Registry not available.")
 
 # Tab 6: AI Committee Planner
-if workflow_page == "🏛️ AI Committee Debate & Planner":
+if workflow_page == "🏛️ AI Committee Debate\nPlanner":
     st.subheader("🏛️ AI Committee Debate & Intervention Planner")
     logs = get_logs()
     if not logs:

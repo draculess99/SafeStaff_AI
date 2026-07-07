@@ -1,6 +1,6 @@
 # SafeStaff AI — ER Wait-Time Forecasting and Nurse-Staffing Decision Support
 
-SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. It combines an XGBoost ER wait-time forecast, operational pressure modules, an operational memory layer, a nurse registry, a shift schedule, a multi-agent shortage solver, human approval, and an audit log into one Streamlit control-tower workflow.
+SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. It combines an XGBoost ER wait-time forecast, operational pressure modules, an operational memory layer, a local RAG policy/SOP knowledge base, a nurse registry, a shift schedule, a multi-agent shortage solver, human approval, and an audit log into one Streamlit control-tower workflow.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -12,6 +12,31 @@ SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. 
 - **Portfolio:** https://draculess99.github.io/VET-VTO-Forecasting/
 
 > **Prototype notice:** SafeStaff AI is a demonstration and decision-support prototype. It is not clinically validated and must not be used for real patient-care or staffing decisions without hospital governance, validation, security review, and human supervision. The system is intended to support nurse managers and staffing coordinators, not replace clinical or operational judgment.
+
+---
+
+## Latest build notes
+
+This build includes two important demo improvements:
+
+### Expanded RAG policy/SOP grounding
+
+The app now ships with **14 seeded demo RAG knowledge-base entries** in:
+
+```text
+database/rag_documents.json
+```
+
+These entries make the system feel more like a real hospital operations command center. They cover ED surge escalation, nurse fatigue, boarding gridlock, fast-track activation, critical-care skill matching, float-pool use, agency nurse approval, ESI acuity surge, ambulance offload delay, pediatric and behavioral-health safeguards, break relief compliance, winter respiratory surge, and human approval/audit governance.
+
+### Workflow tab wrap fix
+
+The Streamlit workflow selector in `frontend/dashboard.py` was adjusted so the workflow tabs wrap onto multiple lines instead of being cut off on narrower screens. This keeps the final tabs, including **AI Committee Debate & Planner** and **Model Performance**, visible without forcing the user to guess what is hidden off-screen.
+
+
+### Escalation-required final governance behavior
+
+When the shortage solver detects an unresolved internal staffing gap, the final human governance step now defaults to **Escalate to CNO / Staffing Manager** instead of **Approve Optimized Roster**. Approval options are still visible for transparency, but they are marked as not recommended when the staffing gap remains unresolved. A submit-time guard blocks accidental approval while `unmet_nurse_gap > 0`.
 
 ---
 
@@ -43,6 +68,8 @@ XGBoost wait-time forecast
 Operational pressure engine
     ↓
 Operational memory / similar-event retrieval
+    ↓
+RAG policy/SOP retrieval
     ↓
 Pressure-based staffing adjustment
     ↓
@@ -145,14 +172,44 @@ This tab allows hospital administrators to run "what-if" simulations to stress-t
 - **Cost vs. Risk Curve:** A visual chart demonstrating the intersection of stressed roster costs and patient safety risk.
 - **Scenario Export:** A one-click button to push the simulated stressed parameters directly into the primary Roster & Shortage Solver for AI resolution.
 
-### 3. Explainability & Token Logs
+### 3. RAG Knowledge Base
+
+This tab adds Retrieval-Augmented Generation to the app. Operators can upload or paste hospital policy, staffing SOPs, overtime rules, union constraints, surge playbooks, fast-track rules, and triage guidance. The backend chunks those documents, stores them locally in `database/rag_documents.json`, retrieves the most relevant chunks with TF-IDF search, and injects the evidence into the AI committee/Gemini debate.
+
+This keeps the demo lightweight: no Pinecone, Chroma server, paid vector database, or cloud embedding service is required. The retrieval layer is designed to ground the agents in local policy evidence while preserving the existing XGBoost, operational pressure, human approval, and audit-log workflow.
+
+Where to see it in the running app:
+
+```text
+📚 RAG Knowledge Base tab
+    Add, delete, reset, and search policy/SOP evidence.
+
+Sidebar → 📚 RAG Policy Grounding
+    Turn RAG on/off and select how many evidence chunks to retrieve.
+
+Roster & Shortage Solver / AI Committee Debate
+    Look for wording such as:
+    "RAG grounding retrieved X policy/SOP evidence chunks"
+    "Retrieved evidence"
+    "RAG evidence"
+```
+
+Good test searches:
+
+```text
+winter surge nurse shortage boarding fast track overtime
+ESI acuity ambulance offload float pool critical care
+break relief meal coverage fatigue high occupancy
+```
+
+### 4. Explainability & Token Logs
 
 This tab lifts the hood on how the system reaches its conclusions and tracks the cost of AI reasoning:
 - **Resolution History Logs:** A drop-down selection of historical staffing resolutions, showing the timestamp, status, and total staffing cost for each event.
 - **Narrative Explainability:** A plain-English narrative detailing exactly why a specific recommendation was made, what constraints were applied, and why certain nurses were selected over others.
 - **Live API Token Usage & Analytics:** Detailed cost tracking for the Live Gemini API calls, including the specific model used, fallback models attempted, total prompt/response tokens consumed, and the estimated API cost in USD.
 
-### 4. Audit Log
+### 5. Audit Log
 
 The audit log provides a persistent, verifiable trail of all human-in-the-loop governance decisions across sessions:
 - **Comprehensive Event Tracking:** Records every staffing event, including shift details, predicted wait times, risk levels, and the exact number of nurses recommended vs. approved.
@@ -160,14 +217,14 @@ The audit log provides a persistent, verifiable trail of all human-in-the-loop g
 - **Compliance & Financial Tracking:** Logs any compliance warnings triggered during the event, whether formal approval was required, and the final estimated cost.
 - **Exportable Records:** Displays the full history in an interactive data table with a one-click option to download the raw `audit_log.csv` for external compliance reviews.
 
-### 5. Research & Validation
+### 6. Research & Validation
 
 This tab serves as the technical documentation and validation center for the prototype:
 - **Intervention Frameworks:** Details the specific research modules and operational frameworks powering the decision engine.
 - **Validation Checks:** Documents the data provenance and logic checks to prove the system's reasoning is grounded in realistic hospital operations.
 - **Execution Paths:** Explains the architecture differences between the Local Expert System fallback mode and the Live API execution paths.
 
-### 6. AI Committee Debate & Planner
+### 7. AI Committee Debate & Planner
 
 This tab serves as the transparent "brain" of the system, showcasing the agentic reasoning layer that drives final staffing decisions. It features:
 - **Context & Risk Analysis Metrics:** A breakdown of the XGBoost predicted wait, base staffing risk, individual pressure adjustments (ESI, Boarding, Arrival Surge, Fast-Track), and the final Adjusted Operational Risk score.
@@ -175,7 +232,7 @@ This tab serves as the transparent "brain" of the system, showcasing the agentic
 - **Committee Debate Summary:** A detailed, multi-agent debate weighing the trade-offs of the recommendation. When running in **Live Groq/Gemini API Mode**, this section injects a rich, multi-paragraph LLM debate highlighting conflicting operational priorities (Staffing vs. Compliance, Safety vs. Cost).
 - **ER Staffing Intervention Planner:** A costed, actionable list of alternative interventions (e.g., opening a fast-track area, floating a triage nurse) complete with target bottlenecks, expected wait reductions, formulas, and assumption sources.
 - **Financial Breakdown:** Aggregated totals for roster staffing costs, intervention costs, and total estimated operational cost.
-### 7. Model Performance
+### 8. Model Performance
 
 This tab provides visual proof of the underlying Machine Learning model's accuracy and reliability:
 - **Hero Metrics:** Displays key performance indicators from the XGBoost training phase, including R² Score, Mean Absolute Error (MAE), and Risk Band Accuracy.
@@ -191,6 +248,7 @@ flowchart TD
     A[ER Scenario Inputs] --> B[XGBoost Wait-Time Forecast]
     A --> C[Operational Pressure Engine]
     A --> M[Operational Memory / Similar-Event Retrieval]
+    A --> R[RAG Policy / SOP Retrieval]
 
     C --> C1[Arrival Surge]
     C --> C2[Bed Boarding]
@@ -202,6 +260,7 @@ flowchart TD
     B --> D[Pressure-Based Staffing Adjustment]
     C --> D
     M --> D
+    R --> E
 
     D --> E[Multi-Agent Shortage Solver]
     E --> E1[Staffing Planner]
@@ -292,6 +351,45 @@ This diagram separates the historical/proxy data used to train the XGBoost model
 ---
 
 ## Key features
+
+### RAG policy/SOP grounding
+
+SafeStaff AI includes a local RAG layer that lets the agentic staffing workflow retrieve relevant policy evidence before producing a recommendation.
+
+The included demo knowledge base contains 14 seeded policies:
+
+1. ED Surge Staffing Escalation SOP
+2. Nurse Fatigue and Overtime Guardrails
+3. Boarding Gridlock Escalation Playbook
+4. Fast Track Activation Criteria
+5. Critical Care Skill-Match Requirement
+6. Charge Nurse Command Center Escalation
+7. Float Pool and Cross-Cover Utilization Rules
+8. Agency Nurse Cost and Approval Policy
+9. ESI Acuity Surge Staffing Matrix
+10. Ambulance Offload Delay Escalation Rule
+11. Pediatric and Behavioral Health Coverage Safeguard
+12. Break Relief and Meal Coverage Compliance
+13. Winter Respiratory Surge Playbook
+14. Human Approval and Audit Trail Requirement
+
+RAG does **not** change the raw XGBoost wait-time prediction. Instead, it improves the agent reasoning, explanation, recommendation, and audit trail by grounding the recommendation in policy/SOP evidence.
+
+```text
+ER scenario inputs
+    ↓
+XGBoost wait-time prediction
+    ↓
+Operational pressure engine
+    ↓
+RAG retrieves relevant policy/SOP evidence
+    ↓
+Multi-agent staffing solver
+    ↓
+Human approval
+    ↓
+Audit log with retrieved evidence
+```
 
 ### XGBoost ER wait-time forecasting
 
@@ -561,6 +659,12 @@ GET  /api/inflow-history
 POST /api/find_similar_history
 GET  /api/gemini-config
 GET  /api/gemini-models
+GET  /api/rag/status
+GET  /api/rag/documents
+POST /api/rag/documents
+DELETE /api/rag/documents/<doc_id>
+POST /api/rag/search
+POST /api/rag/reset
 ```
 
 Quick backend checks:
@@ -578,17 +682,20 @@ curl https://YOUR-BACKEND-URL.up.railway.app/api/schedule
 1. Open the Streamlit dashboard.
 2. Confirm pipeline status is green.
 3. Confirm the Operational Pressure Engine is ready.
-4. Load a demo scenario such as **Winter Flu Surge + Staff Call-Out**.
-5. Review the demo scenario inputs and operational pressures.
-6. Run **Step 1: ER Wait-Time Risk Assessment**.
-7. Review XGBoost wait-time prediction and ER operational pressure.
-8. Review the memory insight or similar prior ER state when available.
-9. Review **Step 2: Pressure-Based Staffing Adjustment**.
-10. Launch the **Multi-Agent Shortage Solver**.
-11. Approve, reject, or override the staffing recommendation.
-12. Confirm the shift schedule updates when approved.
-13. Open the Audit Log and verify the decision was recorded.
-14. Optionally switch between Local Expert System and Live Gemini mode.
+4. Open **📚 RAG Knowledge Base** and confirm the demo policies are loaded.
+5. In the sidebar, confirm **📚 RAG Policy Grounding** is enabled.
+6. Load a demo scenario such as **Winter Flu Surge + Staff Call-Out**.
+7. Review the demo scenario inputs and operational pressures.
+8. Run **Step 1: ER Wait-Time Risk Assessment**.
+9. Review XGBoost wait-time prediction and ER operational pressure.
+10. Review the memory insight or similar prior ER state when available.
+11. Review **Step 2: Pressure-Based Staffing Adjustment**.
+12. Launch the **Multi-Agent Shortage Solver**.
+13. Look for wording such as **RAG grounding retrieved X policy/SOP evidence chunks**.
+14. Approve, reject, or override the staffing recommendation.
+15. Confirm the shift schedule updates when approved.
+16. Open the Audit Log and verify the decision was recorded.
+17. Optionally switch between Local Expert System and Live Gemini mode.
 
 ---
 
@@ -621,11 +728,12 @@ SafeStaff AI is agentic because it performs a multi-step decision workflow inste
 2. Runs an ML wait-time forecast.
 3. Applies operational pressure modules.
 4. Converts pressure into staffing adjustment.
-5. Runs agent-style planning, compliance, safety, finance, and arbiter logic.
-6. Routes high-risk decisions to human approval.
-7. Retrieves similar prior ER operational states from memory to support context-aware recommendations.
-8. Saves schedule, nurse-hour, and audit updates.
-9. Provides explainability and token/cost transparency.
+5. Retrieves relevant RAG policy/SOP evidence for the current scenario.
+6. Runs agent-style planning, compliance, safety, finance, and arbiter logic.
+7. Routes high-risk decisions to human approval.
+8. Retrieves similar prior ER operational states from memory to support context-aware recommendations.
+9. Saves schedule, nurse-hour, and audit updates.
+10. Provides explainability and token/cost transparency.
 
 ---
 
@@ -647,6 +755,8 @@ Current limitations:
 - Data is simulated or Kaggle-derived proxy data.
 - The model is not clinically validated.
 - Operational modules are prototype rules and lookup tables.
+- RAG policies are seeded demo SOPs and should be replaced with real approved hospital policies before production use.
+- Local TF-IDF retrieval is lightweight and demo-friendly, but production RAG should add source control, access control, document versioning, and stronger retrieval evaluation.
 - Nurse-cost calculations are simplified.
 - Gemini API usage depends on quota and API availability.
 - The app is built for capstone/demo evaluation, not production deployment.
@@ -691,7 +801,25 @@ Future memory improvements:
 
 This would make the memory system more trustworthy and easier to govern.
 
-### 3. Add Stronger Security and Input Guardrails
+### 3. Productionize the RAG Knowledge Base
+
+The current RAG layer is intentionally lightweight and local so the capstone can run without a paid vector database. In production, the RAG knowledge base should be governed like an operational policy system.
+
+Future RAG improvements:
+
+- Replace demo policies with approved hospital SOPs and staffing policies
+- Track document source, owner, approval date, expiration date, and version
+- Add role-based access for uploading or deleting policies
+- Add document review workflow before policies become active
+- Add stronger retrieval evaluation and relevance testing
+- Add citations/source display in every agent recommendation
+- Add tamper-resistant audit logs showing which policy chunks were retrieved
+- Consider a production vector database or managed retrieval service if the policy library becomes large
+- Add prompt-injection protections for uploaded documents
+
+This would make RAG safer, more defensible, and easier to validate in a real hospital governance environment.
+
+### 4. Add Stronger Security and Input Guardrails
 
 The prototype should be hardened against common web security risks before production deployment.
 
@@ -710,7 +838,7 @@ Recommended security improvements:
 
 This would help protect the system from unsafe input, accidental misuse, and malicious requests.
 
-### 4. Production Agent Guardrails
+### 5. Production Agent Guardrails
 
 The current agent workflow demonstrates staffing planner, compliance, patient safety, financial audit, and final arbiter behavior. In production, each agent would need stricter guardrails.
 
@@ -729,7 +857,7 @@ Future agent guardrails:
 
 This ensures that agents support human decision-making rather than replacing it.
 
-### 5. Human-in-the-Loop Governance
+### 6. Human-in-the-Loop Governance
 
 SafeStaff AI should remain a decision-support system, not an autonomous staffing authority. Production use would require stronger governance around approvals.
 
@@ -746,7 +874,7 @@ Production governance improvements:
 
 This would make the system safer and more accountable.
 
-### 6. Better Audit Logging and Compliance Reporting
+### 7. Better Audit Logging and Compliance Reporting
 
 The current audit log demonstrates governance, but production audit logging should be more structured and tamper-resistant.
 
@@ -763,7 +891,7 @@ Future audit improvements:
 
 This would improve transparency and support operational review.
 
-### 7. Model Monitoring and MLOps
+### 8. Model Monitoring and MLOps
 
 The current XGBoost model demonstrates ER wait-time forecasting. Production deployment would require stronger model monitoring.
 
@@ -781,7 +909,7 @@ Recommended MLOps improvements:
 
 This would make the forecasting system more reliable over time.
 
-### 8. Replace Mock Data With Real Hospital Data Integrations
+### 9. Replace Mock Data With Real Hospital Data Integrations
 
 The current system uses mock nurse registry and demo shift schedule data. A production system would need integration with real hospital systems.
 
@@ -797,7 +925,7 @@ Potential integrations:
 
 These integrations would allow the operational pressure engine to work from live hospital data rather than simulated demo inputs.
 
-### 9. Multi-User and Multi-Site Support
+### 10. Multi-User and Multi-Site Support
 
 The prototype is designed around a single workflow instance. Production use would require support for multiple users, departments, and hospitals.
 
@@ -815,7 +943,7 @@ Future scaling improvements:
 
 This would allow SafeStaff AI to scale beyond a single demo environment.
 
-### 10. Safer Live LLM Usage
+### 11. Safer Live LLM Usage
 
 SafeStaff AI supports local deterministic mode and Live Gemini mode. Production LLM use should include stronger controls.
 
@@ -832,7 +960,7 @@ Recommended LLM improvements:
 
 This keeps the system useful while reducing operational risk.
 
-### 11. Deployment and Infrastructure Improvements
+### 12. Deployment and Infrastructure Improvements
 
 The current Railway deployment is appropriate for a prototype. A production deployment would need stronger infrastructure.
 
@@ -853,7 +981,7 @@ Production infrastructure improvements:
 
 This would make the application more reliable and easier to maintain.
 
-### 12. Testing Improvements
+### 13. Testing Improvements
 
 Before production use, the system should include automated tests for the full staffing workflow.
 
@@ -878,4 +1006,4 @@ The current version of SafeStaff AI demonstrates the core idea: combining XGBoos
 
 ## One-line summary
 
-**SafeStaff AI turns ER wait-time forecasts into explainable nurse-staffing decisions by combining XGBoost, operational pressure modules, operational memory, agent-style reasoning, human approval, and audit logging.**
+**SafeStaff AI turns ER wait-time forecasts into explainable nurse-staffing decisions by combining XGBoost, operational pressure modules, operational memory, RAG policy/SOP grounding, agent-style reasoning, human approval, and audit logging.**
