@@ -1698,6 +1698,23 @@ with col_s3:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
+st.markdown("<p style='color: #818cf8; font-size: 1.25rem; font-weight: 700; margin-bottom: 15px; margin-top: 15px; text-align: center;'>Choose a tab below.</p>", unsafe_allow_html=True)
+workflow_page = st.radio(
+    "Workflow",
+    [
+        "📋 Roster & Shortage\nSolver",
+        "⚡ System Stress Simulator",
+        "📚 RAG Knowledge Base",
+        "🔍 Explainability & Token Logs",
+        "📝 Audit Log",
+        "🔬 Research & Validation",
+        "🏛️ AI Committee Debate\nPlanner",
+        "📈 Model Performance",
+    ],
+    horizontal=True,
+    key="workflow_page",
+    label_visibility="collapsed",
+)
 st.markdown("---")
 
 with st.expander("🧠 Memory & Developer Tools", expanded=False):
@@ -1817,23 +1834,6 @@ def render_styled_table(df):
     html += "</table></div>"
     return html
 
-st.markdown("<p style='color: #9ca3af; font-size: 1.05rem; font-weight: 600; margin-bottom: 15px;'>Choose a tab below. This keeps the old tab-style workflow, but only renders the selected section for speed.</p>", unsafe_allow_html=True)
-workflow_page = st.radio(
-    "Workflow",
-    [
-        "📋 Roster & Shortage\nSolver",
-        "⚡ System Stress Simulator",
-        "📚 RAG Knowledge Base",
-        "🔍 Explainability & Token Logs",
-        "📝 Audit Log",
-        "🔬 Research & Validation",
-        "🏛️ AI Committee Debate\nPlanner",
-        "📈 Model Performance",
-    ],
-    horizontal=True,
-    key="workflow_page",
-    label_visibility="collapsed",
-)
 
 
 # Selected workflow panel banner: makes the content area feel themed, not just the tab button.
