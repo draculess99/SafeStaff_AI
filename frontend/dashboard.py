@@ -1698,7 +1698,7 @@ with col_s3:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<p style='color: #818cf8; font-size: 1.25rem; font-weight: 700; margin-bottom: 15px; margin-top: 15px; text-align: center;'>Choose a tab below.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: #fbbf24; font-size: 1.25rem; font-weight: 700; margin-bottom: 15px; margin-top: 15px; text-align: left;'>Choose a tab below.</p>", unsafe_allow_html=True)
 workflow_page = st.radio(
     "Workflow",
     [
