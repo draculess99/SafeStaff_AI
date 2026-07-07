@@ -15,31 +15,6 @@ SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. 
 
 ---
 
-## Latest build notes
-
-This build includes two important demo improvements:
-
-### Expanded RAG policy/SOP grounding
-
-The app now ships with **14 seeded demo RAG knowledge-base entries** in:
-
-```text
-database/rag_documents.json
-```
-
-These entries make the system feel more like a real hospital operations command center. They cover ED surge escalation, nurse fatigue, boarding gridlock, fast-track activation, critical-care skill matching, float-pool use, agency nurse approval, ESI acuity surge, ambulance offload delay, pediatric and behavioral-health safeguards, break relief compliance, winter respiratory surge, and human approval/audit governance.
-
-### Workflow tab wrap fix
-
-The Streamlit workflow selector in `frontend/dashboard.py` was adjusted so the workflow tabs wrap onto multiple lines instead of being cut off on narrower screens. This keeps the final tabs, including **AI Committee Debate & Planner** and **Model Performance**, visible without forcing the user to guess what is hidden off-screen.
-
-
-### Escalation-required final governance behavior
-
-When the shortage solver detects an unresolved internal staffing gap, the final human governance step now defaults to **Escalate to CNO / Staffing Manager** instead of **Approve Optimized Roster**. Approval options are still visible for transparency, but they are marked as not recommended when the staffing gap remains unresolved. A submit-time guard blocks accidental approval while `unmet_nurse_gap > 0`.
-
----
-
 ## Project subtitle
 
 **From ER wait-time forecasts to nurse-staffing decisions: an agentic AI control tower for hospital operations.**
