@@ -2893,17 +2893,20 @@ if workflow_page == "📋 Roster & Shortage\nSolver":
             "Request More Candidates / Escalate"
         ]
 
-        # If the internal nurse pool cannot fully cover the shortage, do not make
-        # "Accept System Recommendation" look like the safe/default operational path.
-        # The correct governance posture is escalation.
-        if unmet_gap > 0:
+        # Detect if this is a newly generated recommendation
+        current_nurse_ids = ",".join(sorted(system_rec_nurses))
+        if st.session_state.get("last_seen_nurses") != current_nurse_ids:
+            st.session_state.last_seen_nurses = current_nurse_ids
+            if len(system_rec_nurses) == 4:
+                st.session_state.cand_action_radio = "Accept System Recommendation"
+            elif unmet_gap > 0:
+                st.session_state.cand_action_radio = "Request More Candidates / Escalate"
+            else:
+                st.session_state.cand_action_radio = "Accept System Recommendation"
+                
+        # Also ensure we show the info if there's an unmet gap and we didn't override for 4 nurses
+        if unmet_gap > 0 and len(system_rec_nurses) != 4:
             st.info("Because the internal candidate pool does not fully cover the shortage, the recommended supervisor action is escalation.")
-            prior_cand_action = st.session_state.get("cand_action_radio")
-            if prior_cand_action is None or prior_cand_action == "Accept System Recommendation":
-                if len(system_rec_nurses) == 4:
-                    st.session_state.cand_action_radio = "Accept System Recommendation"
-                else:
-                    st.session_state.cand_action_radio = "Request More Candidates / Escalate"
 
         cand_action_default = st.session_state.get("cand_action_radio", st.session_state.candidate_override_action)
         cand_action = st.radio(
