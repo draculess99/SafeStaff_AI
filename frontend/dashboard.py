@@ -1904,6 +1904,7 @@ WORKFLOW_PANEL_META = {
     },
 }
 _panel = WORKFLOW_PANEL_META.get(workflow_page, WORKFLOW_PANEL_META["📋 Roster & Shortage\nSolver"])
+panel_title_safe = _panel['title'].replace('\n', ' ')
 st.markdown(
     f"""
     <style>
@@ -1915,7 +1916,7 @@ st.markdown(
     </style>
     <div class="workflow-panel-banner workflow-panel-{_panel['class']}">
         <div class="panel-kicker">Current workspace</div>
-        <div class="panel-title">{_panel['title']}</div>
+        <div class="panel-title">{panel_title_safe}</div>
         <p class="panel-help">{_panel['help']}</p>
     </div>
     """,
