@@ -844,7 +844,7 @@ def _fetch_records(endpoint, list_keys, timeout=5):
     except Exception:
         return []
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=120, max_entries=50)
 def get_dashboard_bootstrap_data():
     """Load common dashboard read-only data concurrently.
 
@@ -962,7 +962,7 @@ def get_logs():
 def get_audit_logs():
     return get_dashboard_bootstrap_data().get("audit_logs", [])
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=120, max_entries=50)
 def get_inflow_history():
     try:
         response = requests.get(f"{API_BASE_URL}/api/inflow-history", timeout=5)
@@ -970,7 +970,7 @@ def get_inflow_history():
     except Exception:
         return []
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=30, max_entries=50)
 def get_rag_documents():
     try:
         response = requests.get(f"{API_BASE_URL}/api/rag/documents", timeout=5)
@@ -1055,7 +1055,7 @@ def predict_wait_time(facility_size_beds, month, day_of_week, visithour, urgency
     except Exception:
         return 0.0
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=120, max_entries=50)
 def get_inflow_memory_state():
     try:
         response = requests.get(f"{API_BASE_URL}/api/inflow-memory", timeout=3)
@@ -1138,7 +1138,7 @@ Guidelines:
     except Exception as e:
         return f"Error communicating with CNO Agent: {str(e)}"
 
-@st.cache_resource
+@st.cache_resource(max_entries=2)
 def get_feature_importances():
     try:
         import pickle
