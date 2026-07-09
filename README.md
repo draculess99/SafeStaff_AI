@@ -333,20 +333,34 @@ SafeStaff AI includes a local RAG layer that lets the agentic staffing workflow 
 
 The included demo knowledge base contains 14 seeded policies:
 
-1. ED Surge Staffing Escalation SOP
-2. Nurse Fatigue and Overtime Guardrails
-3. Boarding Gridlock Escalation Playbook
-4. Fast Track Activation Criteria
-5. Critical Care Skill-Match Requirement
-6. Charge Nurse Command Center Escalation
-7. Float Pool and Cross-Cover Utilization Rules
-8. Agency Nurse Cost and Approval Policy
-9. ESI Acuity Surge Staffing Matrix
-10. Ambulance Offload Delay Escalation Rule
-11. Pediatric and Behavioral Health Coverage Safeguard
-12. Break Relief and Meal Coverage Compliance
-13. Winter Respiratory Surge Playbook
-14. Human Approval and Audit Trail Requirement
+1. **ED Surge Staffing Escalation SOP** (Category: Staffing SOP)
+   * *Policy text:* Emergency Department surge staffing should be escalated when adjusted operational risk is High or Critical, when the waiting room exceeds 35 patients, when ambulance arrival pressure is High or Critical, or when the predicted wait-time gap exceeds the safety threshold. First actions should include opening fast-track if low-acuity volume is high, calling in qualified Emergency nurses, and notifying the nursing supervisor. Critical surge requires explicit human approval before roster changes are committed.
+2. **Nurse Fatigue and Overtime Guardrails** (Category: Compliance)
+   * *Policy text:* Nurses projected above 60 weekly hours should not be selected for additional shifts except under executive emergency authorization. Nurses already above 48 weekly hours should be treated as fatigue-sensitive and should be chosen only when safer alternatives are unavailable. Night-shift assignments should prefer nurses with Night or Flexible circadian preference when the skill match is equivalent.
+3. **Boarding Gridlock Escalation Playbook** (Category: Patient Flow)
+   * *Policy text:* Boarding pressure becomes severe when inpatient bed occupancy exceeds 95 percent, boarding count exceeds 15, or average boarding time exceeds 4 hours. Recommended actions include notifying bed management, prioritizing inpatient discharges, adding charge nurse coordination, and protecting ED nurse staffing for active emergency care rather than absorbing inpatient boarding work silently.
+4. **Fast Track Activation Criteria** (Category: Fast Track)
+   * *Policy text:* Fast-track should be opened or expanded when low-acuity patients exceed 35 percent of the waiting room and a qualified nurse or advanced practice provider is available. If fast-track is closed during a Friday night or winter surge, the staffing committee should consider one additional Emergency nurse plus operational support to reduce waiting-room crowding.
+5. **Critical Care Skill-Match Requirement** (Category: Skill Mix)
+   * *Policy text:* Critical-care, trauma, resuscitation, and high-acuity ED zones require nurses with documented Emergency, ICU, or critical-care competency. The staffing engine should not solve a critical shortage by assigning only general medical-surgical coverage when the scenario includes high acuity, ambulance surge, sepsis alerts, cardiac monitoring load, or resuscitation bay demand. When skill match is incomplete, the recommended action is to call a qualified specialist nurse, open charge-nurse review, or escalate to the house supervisor rather than silently filling the slot with an unqualified resource.
+6. **Charge Nurse Command Center Escalation** (Category: Command Center)
+   * *Policy text:* A charge nurse or nursing supervisor should be notified when any two of the following are present: waiting room above 30, ambulance pressure High or Critical, inpatient occupancy above 92 percent, predicted wait time above target by more than 30 minutes, or more than two nurse call-outs in the same shift. The command center should review staffing changes, float-pool calls, bed-flow constraints, and whether a temporary fast-track or discharge-lounge action is safer than simply adding overtime.
+7. **Float Pool and Cross-Cover Utilization Rules** (Category: Float Pool)
+   * *Policy text:* Float-pool nurses should be considered before agency or high-overtime assignments when their competency profile matches the shortage. Cross-cover assignments must respect department qualification, orientation status, and recent shift load. A float nurse can stabilize lower-acuity zones, observation support, discharge coordination, or fast-track intake, but should not be used as the sole replacement for critical-care ED coverage unless credentialed for that role.
+8. **Agency Nurse Cost and Approval Policy** (Category: Cost Control)
+   * *Policy text:* Agency nurse utilization should be treated as a last-line option when internal overtime, voluntary call-in, float pool, and schedule swaps cannot safely cover the shortage. If agency coverage is recommended, the decision summary should explain the patient safety trigger, expected wait-time reduction, estimated incremental cost, and why lower-cost options were insufficient. Agency use for more than one shift in a 24-hour period requires nursing leadership approval in this demo policy.
+9. **ESI Acuity Surge Staffing Matrix** (Category: Acuity Matrix)
+   * *Policy text:* When ESI 1-2 volume rises or the acuity mix shifts upward, staffing recommendations should prioritize experienced ED and critical-care nurses over generic headcount. Low-acuity surges should first trigger fast-track and intake redesign, while high-acuity surges should trigger resuscitation coverage, triage reinforcement, monitored-bed support, and charge nurse escalation. The model should distinguish between volume pressure and acuity pressure because the safest intervention may be different.
+10. **Ambulance Offload Delay Escalation Rule** (Category: EMS Offload)
+    * *Policy text:* If ambulance arrivals are high and offload delay risk is present, staffing decisions should protect triage, resuscitation, and monitored-bed turnover. Recommended interventions include adding an ED nurse with ambulance intake experience, notifying bed management, opening rapid assessment if possible, and avoiding actions that move experienced nurses away from triage during EMS surge periods. Persistent offload delay should be escalated to the house supervisor.
+11. **Pediatric and Behavioral Health Coverage Safeguard** (Category: Special Populations)
+    * *Policy text:* Pediatric, behavioral health, isolation, and one-to-one observation demand should be treated as special coverage constraints. The staffing engine should flag when a shortage affects these populations because normal adult ED staffing substitutions may be unsafe. If appropriate competency is unavailable, the recommendation should include leadership escalation, sitter-pool review, behavioral-health consult coordination, or temporary zone closure rather than pretending the gap is solved.
+12. **Break Relief and Meal Coverage Compliance** (Category: Compliance)
+    * *Policy text:* Staffing plans should preserve break relief and meal coverage whenever possible. A solution that fills a visible shortage but removes all break coverage should be marked as operationally fragile. During high-risk periods, the recommendation should explicitly state whether break coverage remains viable, whether charge nurse relief is needed, and whether the plan creates fatigue or compliance risk later in the shift.
+13. **Winter Respiratory Surge Playbook** (Category: Seasonal Surge)
+    * *Policy text:* During winter respiratory surge, ED staffing should anticipate higher arrival volatility, increased isolation-room turnover, respiratory therapy coordination, and longer inpatient boarding. The first response should combine nurse staffing, fast-track respiratory protocols for low-acuity cases, bed-flow escalation, and supply readiness for PPE and oxygen-related workflows. The staffing committee should avoid using historical average demand alone when current arrival pressure is rising rapidly.
+14. **Human Approval and Audit Trail Requirement** (Category: Governance)
+    * *Policy text:* AI-generated staffing recommendations are decision support only and require human approval before schedule changes are committed. The audit trail should capture scenario inputs, predicted wait-time risk, retrieved RAG policy evidence, agent debate summary, selected intervention, projected impact, and the approving supervisor. High-risk or high-cost decisions should include a short rationale explaining why the recommended plan is safer than available alternatives.
 
 RAG does **not** change the raw XGBoost wait-time prediction. Instead, it improves the agent reasoning, explanation, recommendation, and audit trail by grounding the recommendation in policy/SOP evidence.
 
