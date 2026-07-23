@@ -119,7 +119,7 @@
             "Region: hour_historical_avg_wait"
         ],
         "model_path": "D:\\Work\\Springboard\\ANTIGRAVITY-SCRATCH\\day2\\agy-cli-projects-2\\ER-Wait-Time\\nurse_staffing_system\\backend\\xgboost_model.pkl",
-        "last_trained_time": "2026-06-29 16:02:15",
+        "last_trained_time": "2026-07-21 19:13:31",
         "model_purpose": "Early-warning staffing risk detection, not exact clinical wait-time guarantee.",
         "dataset_type": "Synthetic Kaggle ER wait-time dataset",
         "dataset_note": "This project uses the Kaggle ER Wait Time dataset, which is synthetic/simulated emergency department data. It does not contain real patient records or PHI. Real hospital deployment would require retraining and validation on hospital-specific operational data.",

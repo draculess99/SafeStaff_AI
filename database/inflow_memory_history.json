@@ -352,5 +352,50 @@
             ]
         },
         "memory_reasoning": "Schedule updated. Recorded scenario signature for future similarity matching."
+    },
+    {
+        "timestamp": "2026-07-21T19:13:57.202465",
+        "event_type": "schedule_update",
+        "scenario_signature": {
+            "waiting_room_count": 32,
+            "ed_occupancy_percent": 99,
+            "arrival_pressure": "Moderate",
+            "boarding_pressure": "High",
+            "fatigue_pressure": "Low",
+            "acuity_pressure": "High"
+        },
+        "forecasted_volume": 0,
+        "actual_or_observed_volume": null,
+        "prediction_delta": 0,
+        "previous_memory": {
+            "rolling_inflow_avg": 0.0,
+            "last_prediction_delta": 0,
+            "trend_direction": "stable",
+            "last_forecasted_volume": 0,
+            "last_actual_volume": 0,
+            "memory_update_interval_minutes": 10,
+            "last_updated": "2026-07-07T12:37:11.507418",
+            "memory_reasoning": "Memory state saved from schedule update workflow. Waiting for actuals."
+        },
+        "updated_memory": {
+            "rolling_inflow_avg": 0.0,
+            "last_prediction_delta": 0,
+            "trend_direction": "stable",
+            "last_forecasted_volume": 0,
+            "last_actual_volume": 0,
+            "memory_update_interval_minutes": 10,
+            "last_updated": "2026-07-21T19:13:57.201227",
+            "memory_reasoning": "Memory state saved from schedule update workflow. Waiting for actuals."
+        },
+        "staffing_recommendation": {
+            "final_additional_nurses": 3,
+            "nurses_assigned": [
+                "NURSE_005",
+                "NURSE_010",
+                "NURSE_008",
+                "NURSE_014"
+            ]
+        },
+        "memory_reasoning": "Schedule updated. Recorded scenario signature for future similarity matching."
     }
 ]

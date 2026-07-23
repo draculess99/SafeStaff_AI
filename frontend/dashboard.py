@@ -932,6 +932,18 @@ def render_pressure_staffing_adjustment_card(evidence):
     level = evidence.get("adjusted_operational_risk", "Normal")
     style = get_pressure_badge_style(level)
     reasons = evidence.get("nurse_increment_reasons", []) or evidence.get("nurse_adjustment_reasons", []) or []
+    
+    resilience = evidence.get("staffing_resilience_margin", 100)
+    if resilience >= 70:
+        res_color = "#22c55e"
+        res_text = "Safe"
+    elif resilience >= 40:
+        res_color = "#f59e0b"
+        res_text = "Strained"
+    else:
+        res_color = "#ef4444"
+        res_text = "Critical"
+
     if isinstance(reasons, list):
         reasons_text = "; ".join(str(r) for r in reasons[:3]) if reasons else "No additional operational increment reasons recorded."
     else:
@@ -943,6 +955,16 @@ def render_pressure_staffing_adjustment_card(evidence):
             <div><span style='color:#94a3b8;'>Base wait-time staffing</span><br/><strong style='color:#f8fafc;'>+{base}</strong></div>
             <div><span style='color:#94a3b8;'>Operational adjustment</span><br/><strong style='color:{style['text']};'>+{adjustment}</strong></div>
             <div><span style='color:#94a3b8;'>Final recommendation</span><br/><strong style='color:#86efac;'>+{final}</strong></div>
+        </div>
+        <div style='margin-top:16px; background:rgba(0,0,0,0.25); padding:12px; border-radius:8px;'>
+            <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>
+                <span style='font-size:0.85rem; color:#cbd5e1; font-weight:700;'>Staffing Resilience Margin</span>
+                <span style='font-size:0.85rem; color:{res_color}; font-weight:800;'>{resilience}% ({res_text})</span>
+            </div>
+            <div style='width:100%; background:rgba(255,255,255,0.1); border-radius:4px; height:8px;'>
+                <div style='width:{resilience}%; background:{res_color}; height:8px; border-radius:4px; transition: width 0.5s ease-in-out;'></div>
+            </div>
+            <div style='margin-top:6px; font-size:0.75rem; color:#94a3b8;'>Current operational buffer before staffing failure.</div>
         </div>
         <div style='margin-top:10px; color:#dbeafe; font-size:0.9rem; line-height:1.55;'>
             The ER pressure status from Step 1 is translated into the staffing recommendation here. Factors applied: {reasons_text}

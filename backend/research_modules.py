@@ -424,6 +424,9 @@ def create_committee_evidence(xgboost_predicted_wait_time, base_staffing_risk, e
     evidence["research_adjusted_nurses_needed"] = final_calc["final_additional_nurses_needed"]
     evidence["nurse_adjustment_reasons"] = final_calc["nurse_increment_reasons"]
     evidence["nurse_adjustment_note"] = "Research-module pressure adjusted staffing recommendation."
+    
+    # New Metric: Staffing Resilience Margin
+    evidence["staffing_resilience_margin"] = max(0, 100 - risk_info["final_operational_risk_score"])
 
     return evidence
 
