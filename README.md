@@ -2,7 +2,6 @@
 
 SafeStaff AI is an agentic AI capstone prototype for emergency-room operations. It combines an XGBoost ER wait-time forecast, operational pressure modules, an operational memory layer, a local RAG policy/SOP knowledge base, a nurse registry, a shift schedule, a multi-agent shortage solver, human approval, and an audit log into one Streamlit control-tower workflow.
 
-![Google & Kaggle](https://img.shields.io/badge/Google_%26_Kaggle-Agentic_Capstone-4285F4?style=flat&logo=google&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Project Links
